@@ -58,13 +58,6 @@ newport_calc_drawmode1(struct gfx_ctx *ctx)
 		/* These two are unimplemented */
 	case NewportBppModeUndefined:
 		goto unknown;
-	/* For now only support ci8 in/out, for code bring-up */
-
-	/* other stuff to remember to set as i add more operating modes */
-#if 0
-	    REX3_DRAWMODE1_RGBMODE |
-	    REX3_DRAWMODE1_DITHER
-#endif
 	}
 unknown:
 		printf("%s: called on unimplemented fbmode (%d) pixmode (%d)\n",
@@ -110,10 +103,75 @@ newport_calc_wrmode(struct gfx_ctx *ctx, uint32_t planemask)
 	return (0xffffff);
 }
 
+/**
+ * Map 24 bit RGB pixel to 24-bit RGB framebuffer format.
+ *
+ * This requires quite a bit of swizzling!
+ */
+uint32_t
+newport_calc_rgb888_to_fb_rgb888(uint32_t color)
+{
+	unsigned int res;
+	unsigned int i;
+	unsigned int mr, mg, mb;
+	unsigned int sr, sg, sb;
+
+	res = 0;
+
+	/* Input here is RGB */
+	mr = 0x800000;
+	mg = 0x008000;
+	mb = 0x000080;
+
+	sr = 2;
+	sg = 1;
+	sb = 4;
+
+	for (i = 0; i < 8; i++) {
+		res |= (color & mr)?sr:0;
+		res |= (color & mg)?sg:0;
+		res |= (color & mb)?sb:0;
+
+		sr <<= 3;
+		sg <<= 3;
+		sb <<= 3;
+		mr >>= 1;
+		mg >>= 1;
+		mb >>= 1;
+	}
+
+	return res;
+}
+
+/**
+ * Map 24 bit RGB pixel to 8 bit RGB framebuffer format.
+ *
+ * This is the same as the 24 bit format, but truncated
+ * to 8 bits, which correctly captures the high 2/3 bits.
+ */
+uint32_t
+newport_calc_rgb888_to_fb_rgb332(uint32_t color)
+{
+	return newport_calc_rgb888_to_fb_rgb888(color) & 0xff;
+}
+
+/**
+ * Map 24 bit RGB pixel format to the HOSTRW format (BGR).
+ *
+ * TODO: really should include the alpha channel at some point..
+ */
+uint32_t
+newport_calc_rgb888_to_bgr888(uint32_t color)
+{
+	return  ((color & 0x0000FF) << 16)
+	    | ((color & 0xFF0000) >> 16)
+	    | ((color & 0x00FF00));
+}
+
 /*
  * Calculate the colour to use for COLORVRAM.
  *
- * TODO: verify this statement!
+ * The input is either RGB888, RGB332 or CI8.
  *
  * This uses the raw output pixel format, not the HOSTRW
  * input pixel format or (I think) the COLORI RGB layout.
@@ -122,7 +180,25 @@ newport_calc_wrmode(struct gfx_ctx *ctx, uint32_t planemask)
 uint32_t
 newport_calc_colorvram(struct gfx_ctx *ctx, uint32_t color)
 {
-	/* For now we're only supporting ci8 in/out */
+
+	switch (ctx->fb_mode) {
+	case NewportBppModeCi8:	/* output is ci8, assume ci8 in */
+		return (color & 0xff);
+	case NewportBppModeRgb24:	/* output is rgb24, assume rgb24 in for now */
+		return newport_calc_rgb888_to_fb_rgb888(color);
+	case NewportBppModeRgb8:
+		/* Output is rgb8, input is either rgb8 or rgb24 */
+		if (ctx->pixel_mode == NewportBppModeRgb24) {
+			return newport_calc_rgb888_to_fb_rgb332(color);
+		} else {
+			break;
+		}
+	default:
+		break;
+	}
+
+	printf("%s: pixel (%d) -> output (%d) is unsupported\n",
+	    __func__, ctx->pixel_mode, ctx->fb_mode);
 	return (color);
 }
 
@@ -133,13 +209,39 @@ newport_calc_hostrw_color(struct gfx_ctx *ctx, uint32_t color)
 	return (color);
 }
 
+/**
+ * Turn the input colour into our desired colour for use in
+ * the COLORI register.
+ *
+ * The COLORI register is either CI or BGR888.
+ *
+ * So for CI it's just returned as-is, but for 8/12 bit colour
+ * it will need to be expanded out to RGB888 and then converted
+ * to BGR888.
+ */
 uint32_t
 newport_calc_colori_color(struct gfx_ctx *ctx, uint32_t color)
 {
-	/* XXX for now */
+	switch (ctx->fb_mode) {
+	case NewportBppModeCi8:	/* output is ci8, assume ci8 in */
+		return (color & 0xff);
+	case NewportBppModeRgb24:	/* output is rgb24, assume rgb24 in for now */
+		return newport_calc_rgb888_to_bgr888(color);
+	case NewportBppModeRgb8:
+		/* Output is bgr888, only handle rgb24 input for now */
+		if (ctx->pixel_mode == NewportBppModeRgb24) {
+			return newport_calc_rgb888_to_bgr888(color);
+		} else {
+			break;
+		}
+	default:
+		break;
+	}
+
+	printf("%s: pixel (%d) -> output (%d) is unsupported\n",
+	    __func__, ctx->pixel_mode, ctx->fb_mode);
 	return (color);
 }
-
 
 /**
  * Solid fill a rectangle with the given color value.
@@ -148,7 +250,7 @@ newport_calc_colori_color(struct gfx_ctx *ctx, uint32_t color)
  * it's a stright up fast fill.
  */
 void
-newport_fill_rectangle(struct gfx_ctx *dc, int x1, int y1, int wi,
+newport_fill_rectangle_fast(struct gfx_ctx *dc, int x1, int y1, int wi,
     int he, uint32_t color)
 {
 	uint32_t drawmode1;
@@ -176,6 +278,43 @@ newport_fill_rectangle(struct gfx_ctx *dc, int x1, int y1, int wi,
 	    REX3_DRAWMODE1_LO_SRC);
 	rex3_write(dc, REX3_REG_WRMASK, newport_calc_wrmode(dc, 0xffffffff));
 	rex3_write(dc, REX3_REG_COLORVRAM, newport_calc_colorvram(dc, color));
+	rex3_write(dc, REX3_REG_XYSTARTI, (x1 << REX3_XYSTARTI_XSHIFT) | y1);
+
+	rex3_write_go(dc, REX3_REG_XYENDI, (x2 << REX3_XYENDI_XSHIFT) | y2);
+	dc->log_regio = false;
+}
+
+/**
+ * Solid fill a rectangle with the given color value.
+ */
+void
+newport_fill_rectangle(struct gfx_ctx *dc, int x1, int y1, int wi,
+    int he, uint32_t color)
+{
+	uint32_t drawmode1;
+
+	int x2 = x1 + wi - 1;
+	int y2 = y1 + he - 1;
+
+	dc->log_regio = true;
+
+	drawmode1 = newport_calc_drawmode1(dc);
+
+	rex3_wait_gfifo(dc);
+
+	rex3_write(dc, REX3_REG_DRAWMODE0, REX3_DRAWMODE0_OPCODE_DRAW |
+	    REX3_DRAWMODE0_ADRMODE_BLOCK | REX3_DRAWMODE0_DOSETUP |
+	    REX3_DRAWMODE0_STOPONX | REX3_DRAWMODE0_STOPONY);
+	rex3_write(dc, REX3_REG_CLIPMODE, 0x1e00);
+	rex3_write(dc, REX3_REG_DRAWMODE1,
+	    drawmode1 |
+	    REX3_DRAWMODE1_PLANES_RGB |
+	    REX3_DRAWMODE1_COMPARE_LT |
+	    REX3_DRAWMODE1_COMPARE_EQ |
+	    REX3_DRAWMODE1_COMPARE_GT |
+	    REX3_DRAWMODE1_LO_SRC);
+	rex3_write(dc, REX3_REG_WRMASK, newport_calc_wrmode(dc, 0xffffffff));
+	rex3_write(dc, REX3_REG_COLORI, newport_calc_colori_color(dc, color));
 	rex3_write(dc, REX3_REG_XYSTARTI, (x1 << REX3_XYSTARTI_XSHIFT) | y1);
 
 	rex3_write_go(dc, REX3_REG_XYENDI, (x2 << REX3_XYENDI_XSHIFT) | y2);
