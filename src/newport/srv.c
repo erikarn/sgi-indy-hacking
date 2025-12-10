@@ -15,6 +15,7 @@
 #include "newport_regs.h"
 #include "newport_ctx.h"
 #include "newport_regio.h"
+#include "newport_hwops.h"
 #include "newport_ops.h"
 
 static bool

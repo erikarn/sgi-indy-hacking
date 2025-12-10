@@ -1,7 +1,7 @@
 CFLAGS=-O2 -g -ggdb -Wall
 all: server
 
-OBJS=srv.o newport_regio.o newport_ops.o
+OBJS=srv.o newport_regio.o newport_ops.o newport_hwops.o
 
 server: $(OBJS)
 	$(CC) -o server $(OBJS)
