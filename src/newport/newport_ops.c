@@ -110,7 +110,6 @@ vc2_read_ram(struct gfx_ctx *dc, uint16_t addr)
 	return (uint16_t)(rex3_read(dc, REX3_REG_DCBDATA0) >> 16);
 }
 
-#if 0
 static void
 vc2_write_ram(struct gfx_ctx *dc, uint16_t addr, uint16_t val)
 {
@@ -132,11 +131,10 @@ vc2_write_ram(struct gfx_ctx *dc, uint16_t addr, uint16_t val)
  *
  * Note this must not be used to read from NEWPORT_DCBADDR_XMAP_BOTH.
  */
-static u_int32_t
+u_int32_t
 xmap9_read(struct gfx_ctx *dc, int chip, int crs)
 {
 
-	KASSERT(chip != NEWPORT_DCBADDR_XMAP_BOTH);
 	if (chip == NEWPORT_DCBADDR_XMAP_BOTH)
 		chip = NEWPORT_DCBADDR_XMAP_0;
 
@@ -153,7 +151,7 @@ xmap9_read(struct gfx_ctx *dc, int chip, int crs)
 /*
  * write to the given XMAP chip, or to both.
  */
-static void
+void
 xmap9_write(struct gfx_ctx *dc, int chip, int crs, uint8_t val)
 {
 	rex3_write(dc, REX3_REG_DCBMODE,
@@ -196,8 +194,7 @@ xmap9_wait(struct gfx_ctx *dc)
 	xmap9_wait_chip(dc, NEWPORT_DCBADDR_XMAP_1);
 }
 
-#if 1
-static uint32_t
+uint32_t
 xmap9_read_mode(struct gfx_ctx *dc, int chip, uint8_t idx)
 {
 	uint32_t mode = 0, val;
@@ -213,7 +210,6 @@ xmap9_read_mode(struct gfx_ctx *dc, int chip, uint8_t idx)
 	}
 	return (mode);
 }
-#endif
 
 /*
  * Map the pixel clock frequency to which parameters to use for XMAP9
@@ -255,15 +251,13 @@ newport_hw_get_mode_cs_params(int cfreq)
  * that we will ALSO need to parse the PROM environment and make
  * it available here.
  */
-static void
-xmap9_write_mode(struct gfx_ctx *dc, uint8_t index, uint32_t mode)
+void
+xmap9_write_mode(struct gfx_ctx *dc, uint32_t cfreq, uint8_t index,
+    uint32_t mode)
 {
 	const struct newport_dcb_cs_params *cs;
-	uint8_t id;
 
-	/* Fetch the monitor ID and then the CS parameters to use */
-	id = newport_get_monitor_id(dc);
-	cs = newport_hw_get_mode_cs_params(newport_monitor_list[id].cfreq);
+	cs = newport_hw_get_mode_cs_params(cfreq);
 
 	/* wait for FIFO if needed */
 	xmap9_wait(dc);
@@ -278,6 +272,8 @@ xmap9_write_mode(struct gfx_ctx *dc, uint8_t index, uint32_t mode)
 	);
 	rex3_write(dc, REX3_REG_DCBDATA0, (index << 24) | (mode & 0xffffff));
 }
+
+#if 0
 
 /**** Helper functions ****/
 static void
@@ -437,7 +433,6 @@ newport_get_resolution(struct gfx_ctx *dc)
 static uint8_t
 cmap_reg_read(struct gfx_ctx *dc, uint8_t id, uint8_t reg)
 {
-	KASSERT(id != NEWPORT_DCBADDR_CMAP_BOTH);
 	if (id == NEWPORT_DCBADDR_CMAP_BOTH)
 		id = NEWPORT_DCBADDR_CMAP_0;
 
