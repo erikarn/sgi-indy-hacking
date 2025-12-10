@@ -13,6 +13,8 @@
 
 #include "newport_regs.h"
 #include "newport_ctx.h"
+#include "newport_regio.h"
+#include "newport_ops.h"
 
 static bool
 verify_newport(void)
@@ -106,6 +108,9 @@ main(int argc, const char *argv[])
 	gfx_ctx_init(&ctx);
 	if (!newport_open(&ctx))
 		exit(127);
+
+	printf("DRAWMODE0: 0x%08x\n", rex3_read(&ctx, REX3_REG_DRAWMODE0));
+	printf("DRAWMODE1: 0x%08x\n", rex3_read(&ctx, REX3_REG_DRAWMODE1));
 
 	sleep(1);
 

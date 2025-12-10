@@ -24,7 +24,7 @@ rex3_write(struct gfx_ctx *ctx, uint32_t rexreg, uint32_t val)
 {
 	volatile uint32_t *reg;
 
-	reg = (uint32_t)(((char *) ctx->addr) + rexreg);
+	reg = (volatile uint32_t *)(((char *) ctx->addr) + rexreg);
 	*reg = val;
 }
 
@@ -33,8 +33,8 @@ rex3_read(struct gfx_ctx *ctx, uint32_t rexreg)
 {
 	volatile uint32_t *reg;
 
-	reg = (uint32_t)(((char *) ctx->addr) + rexreg);
-	val = *reg;
+	reg = (volatile uint32_t *)(((char *) ctx->addr) + rexreg);
+	return (*reg);
 }
 
 void
