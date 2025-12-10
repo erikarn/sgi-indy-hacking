@@ -1,3 +1,4 @@
+CFLAGS=-O2 -g -ggdb
 all: srv
 
 srv: srv.o

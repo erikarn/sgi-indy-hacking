@@ -1,0 +1,7 @@
+#ifndef	__NEWPORT_REGS_H__
+#define	__NEWPORT_REGS_H__
+
+#define NEWPORT_IOSPACE_START 0xf0000
+#define NEWPORT_IOSPACE_SIZE 0x4000
+
+#endif /* __NEWPORT_REGS_H__ */
