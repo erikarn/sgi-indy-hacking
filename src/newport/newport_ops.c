@@ -299,16 +299,44 @@ newport_calc_drawmode1(struct gfx_ctx *ctx)
  *
  * This takes into account the requested drawplanes and will
  * remap them appropriately.
+ *
+ * TODO: actually do the plane stuff!
  */
 uint32_t
 newport_calc_wrmode(struct gfx_ctx *ctx, uint32_t planemask)
 {
+	/*
+	 * TODO: for now don't do plane mask stuff, always write to all
+	 * planes.
+	 *
+	 * TODO: obviously this doesn't know yet about the overlay/underlay
+	 * stuff, double buffered stuff, etc, etc.
+	 */
 	/* For now only support ci8 in/out */
-	return 0x000000ff;
+	switch (ctx->fb_mode) {
+	case NewportBppModeRgb8:
+		return (0xff);
+	case NewportBppModeRgb12:
+		return (0xfff);
+	case NewportBppModeRgb24:
+		return (0xffffff);
+	case NewportBppModeCi8:
+		return (0xff);
+	case NewportBppModeUndefined:
+		printf("%s: called on Undefined\n", __func__);
+		return (0xffffff);
+	}
+	return (0xffffff);
 }
 
 /*
  * Calculate the colour to use for COLORVRAM.
+ *
+ * TODO: verify this statement!
+ *
+ * This uses the raw output pixel format, not the HOSTRW
+ * input pixel format or (I think) the COLORI RGB layout.
+ * It's only 1:1 for CI modes.
  */
 uint32_t
 newport_calc_colorvram(struct gfx_ctx *ctx, uint32_t color)
@@ -316,6 +344,21 @@ newport_calc_colorvram(struct gfx_ctx *ctx, uint32_t color)
 	/* For now we're only supporting ci8 in/out */
 	return (color);
 }
+
+uint32_t
+newport_calc_hostrw_color(struct gfx_ctx *ctx, uint32_t color)
+{
+	/* XXX for now */
+	return (color);
+}
+
+uint32_t
+newport_calc_colori_color(struct gfx_ctx *ctx, uint32_t color)
+{
+	/* XXX for now */
+	return (color);
+}
+
 
 /**
  * Solid fill a rectangle with the given color value.
