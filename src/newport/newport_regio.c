@@ -24,6 +24,9 @@ rex3_write(struct gfx_ctx *ctx, uint32_t rexreg, uint32_t val)
 {
 	volatile uint32_t *reg;
 
+	if (ctx->log_regio)
+		printf("%s: 0x%04x <- 0x%08x\n", __func__, rexreg, val);
+
 	reg = (volatile uint32_t *)(((char *) ctx->addr) + rexreg);
 	*reg = val;
 }
@@ -32,9 +35,13 @@ uint32_t
 rex3_read(struct gfx_ctx *ctx, uint32_t rexreg)
 {
 	volatile uint32_t *reg;
+	uint32_t val;
 
 	reg = (volatile uint32_t *)(((char *) ctx->addr) + rexreg);
-	return (*reg);
+	val = *reg;
+	if (ctx->log_regio)
+		printf("%s: 0x%04x -> 0x%08x\n", __func__, rexreg, val);
+	return (val);
 }
 
 void

@@ -23,6 +23,8 @@ struct gfx_ctx {
 
 	/* Incoming pixel mode (for HOSTRW, converting stuff, etc) */
 	NewportBppMode pixel_mode;
+
+	bool log_regio;
 };
 
 #endif	/* __NEWPORT_CTX_H__ */

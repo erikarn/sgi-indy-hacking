@@ -281,17 +281,53 @@ xmap9_write_mode(struct gfx_ctx *dc, uint8_t index, uint32_t mode)
 uint32_t
 newport_calc_drawmode1(struct gfx_ctx *ctx)
 {
+	switch (ctx->pixel_mode) {
+	case NewportBppModeRgb24:	/* input pixels are RGB888 */
+		if (ctx->fb_mode == NewportBppModeRgb24) { /* FB pixels are rgb888 */
+			return
+			    REX3_DRAWMODE1_DD_DD24 |
+			    REX3_DRAWMODE1_RWPACKED |
+			    REX3_DRAWMODE1_RGBMODE |
+			    REX3_DRAWMODE1_HD_HD24;
+
+		} else if (ctx->fb_mode == NewportBppModeRgb8) { /* FB pixels are rgb8 */
+			/* XXX TODO: make DITHER a flag? */
+			return
+			    REX3_DRAWMODE1_DD_DD8 |
+			    REX3_DRAWMODE1_RWPACKED |
+			    REX3_DRAWMODE1_RGBMODE |
+			    REX3_DRAWMODE1_DITHER |
+			    REX3_DRAWMODE1_HD_HD24;
+		} else {
+			goto unknown;
+		}
+	case NewportBppModeCi8:
+		/* Always just assume input/output is 8 bit for now */
+		return
+		    REX3_DRAWMODE1_DD_DD8 |
+		    REX3_DRAWMODE1_RWPACKED |
+		    REX3_DRAWMODE1_HD_HD8;
+
+	case NewportBppModeRgb8:
+	case NewportBppModeRgb12:
+		/* These two are unimplemented */
+	case NewportBppModeUndefined:
+		goto unknown;
 	/* For now only support ci8 in/out, for code bring-up */
-	return
-	    REX3_DRAWMODE1_DD_DD8 |
-	    REX3_DRAWMODE1_RWPACKED |
-	    REX3_DRAWMODE1_HD_HD8;
 
 	/* other stuff to remember to set as i add more operating modes */
 #if 0
 	    REX3_DRAWMODE1_RGBMODE |
 	    REX3_DRAWMODE1_DITHER
 #endif
+	}
+unknown:
+		printf("%s: called on unimplemented fbmode (%d) pixmode (%d)\n",
+		    __func__, ctx->fb_mode, ctx->pixel_mode);
+		return
+		    REX3_DRAWMODE1_DD_DD8 |
+		    REX3_DRAWMODE1_RWPACKED |
+		    REX3_DRAWMODE1_HD_HD8;
 }
 
 /*
@@ -375,6 +411,8 @@ newport_fill_rectangle(struct gfx_ctx *dc, int x1, int y1, int wi,
 	int x2 = x1 + wi - 1;
 	int y2 = y1 + he - 1;
 
+	dc->log_regio = true;
+
 	drawmode1 = newport_calc_drawmode1(dc);
 
 	rex3_wait_gfifo(dc);
@@ -396,6 +434,7 @@ newport_fill_rectangle(struct gfx_ctx *dc, int x1, int y1, int wi,
 	rex3_write(dc, REX3_REG_XYSTARTI, (x1 << REX3_XYSTARTI_XSHIFT) | y1);
 
 	rex3_write_go(dc, REX3_REG_XYENDI, (x2 << REX3_XYENDI_XSHIFT) | y2);
+	dc->log_regio = false;
 }
 
 #if 0

@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <limits.h>
 #include <stdbool.h>
 #include <unistd.h>
 #include <stdint.h>
@@ -34,9 +35,11 @@ gfx_ctx_init(struct gfx_ctx *ctx)
 	bzero(ctx, sizeof(*ctx));
 	ctx->fd = -1;
 	ctx->addr = NULL;
+
+	/* Defaults */
 	ctx->fb_mode = NewportBppModeCi8;
 	ctx->pixel_mode = NewportBppModeCi8;
-	ctx->pixel_mode = 70; /* 1024x768 60Hz */
+	ctx->cfreq = 70; /* 1024x768 60Hz */
 }
 
 static bool
@@ -102,6 +105,7 @@ int
 main(int argc, const char *argv[])
 {
 	struct gfx_ctx ctx;
+	uint32_t color;
 
 	if (! verify_newport()) {
 		err(127, "Not a newport!\n");
@@ -116,11 +120,17 @@ main(int argc, const char *argv[])
 	printf("DRAWMODE1: 0x%08x\n", rex3_read(&ctx, REX3_REG_DRAWMODE1));
 
 	/* Set configuration to use */
-	ctx.fb_mode = NewportBppModeCi8;
-	ctx.pixel_mode = NewportBppModeCi8;
-	ctx.pixel_mode = 70; /* 1024x768 60Hz */
+	ctx.fb_mode = NewportBppModeRgb8; /* output is rgb8 */
+	ctx.pixel_mode = NewportBppModeRgb24; /* input is rgb888 */
+	ctx.cfreq = 70; /* 1024x768 60Hz */
 
 	newport_setup_hw(&ctx);
+
+	color = 0;
+	if (argc > 1)
+		color = strtoul(argv[1], NULL, 0);
+
+	newport_fill_rectangle(&ctx, 0, 0, 1280, 1024, color);
 
 	sleep(1);
 
