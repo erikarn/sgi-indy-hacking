@@ -12,11 +12,7 @@
 #include <sys/mman.h>
 
 #include "newport_regs.h"
-
-struct gfx_ctx {
-	int fd;
-	void *addr;
-};
+#include "newport_ctx.h"
 
 static bool
 verify_newport(void)
