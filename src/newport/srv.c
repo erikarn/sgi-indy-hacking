@@ -4,9 +4,14 @@
 #include <unistd.h>
 #include <stdint.h>
 #include <fcntl.h>
+#include <strings.h>
 #include <dev/wscons/wsconsio.h>
 #include <sys/ioctl.h>
 #include <err.h>
+
+struct gfx_ctx {
+	int fd;
+};
 
 static bool
 verify_newport(void)
@@ -20,12 +25,81 @@ verify_newport(void)
 	return ((i == 0) && (type == WSDISPLAY_TYPE_NEWPORT));
 }
 
+static void
+gfx_ctx_init(struct gfx_ctx *ctx)
+{
+	bzero(ctx, sizeof(*ctx));
+	ctx->fd = -1;
+}
+
+static bool
+newport_open(struct gfx_ctx *ctx)
+{
+	int i, type;
+
+
+	ctx->fd = open("/dev/ttyE0", O_RDONLY, 0);
+	if (ctx->fd < 0) {
+		warn("%s: couldn't open /dev/ttyE0");
+		goto error;
+	}
+
+	/* TODO: mapped or dumbfb? */
+	type = WSDISPLAYIO_MODE_MAPPED;
+	i = ioctl(ctx->fd, WSDISPLAYIO_SMODE, &type);
+	if (i != 0) {
+		warn("%s: WSDISPLAYIO_SMODE");
+		goto error;
+	}
+
+	/* TODO: mmap() */
+
+	return true;
+
+error:
+	if (ctx->fd != -1)
+		close(ctx->fd);
+	return false;
+}
+
+static void
+newport_close(struct gfx_ctx *ctx)
+{
+	int i, type;
+
+
+	/* XXX i know */
+	if (ctx->fd > 0) {
+		/* TODO: unmap() */
+
+		/* Reset */
+		type = WSDISPLAYIO_MODE_EMUL;
+		i = ioctl(ctx->fd, WSDISPLAYIO_SMODE, &type);
+		if (i != 0)
+			warn("%s: couldn't restore console mode");
+
+		close(ctx->fd);
+		ctx->fd = -1;
+	}
+}
+
 int
 main(int argc, const char *argv[])
 {
+	struct gfx_ctx ctx;
+
 	if (! verify_newport()) {
 		err(127, "Not a newport!\n");
 	}
 	printf("Hi! It's a newport!\n");
+
+	gfx_ctx_init(&ctx);
+	if (!newport_open(&ctx))
+		exit(127);
+
+	sleep(1);
+
+	newport_close(&ctx);
+
 	exit(0);
 }
