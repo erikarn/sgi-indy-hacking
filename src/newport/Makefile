@@ -1,4 +1,4 @@
-CFLAGS=-O2 -g -ggdb
+CFLAGS=-O2 -g -ggdb -Wall
 all: server
 
 OBJS=srv.o newport_regio.o newport_ops.o

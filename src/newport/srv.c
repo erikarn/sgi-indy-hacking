@@ -34,6 +34,9 @@ gfx_ctx_init(struct gfx_ctx *ctx)
 	bzero(ctx, sizeof(*ctx));
 	ctx->fd = -1;
 	ctx->addr = NULL;
+	ctx->fb_mode = NewportBppModeCi8;
+	ctx->pixel_mode = NewportBppModeCi8;
+	ctx->pixel_mode = 70; /* 1024x768 60Hz */
 }
 
 static bool
@@ -111,6 +114,13 @@ main(int argc, const char *argv[])
 
 	printf("DRAWMODE0: 0x%08x\n", rex3_read(&ctx, REX3_REG_DRAWMODE0));
 	printf("DRAWMODE1: 0x%08x\n", rex3_read(&ctx, REX3_REG_DRAWMODE1));
+
+	/* Set configuration to use */
+	ctx.fb_mode = NewportBppModeCi8;
+	ctx.pixel_mode = NewportBppModeCi8;
+	ctx.pixel_mode = 70; /* 1024x768 60Hz */
+
+	newport_setup_hw(&ctx);
 
 	sleep(1);
 

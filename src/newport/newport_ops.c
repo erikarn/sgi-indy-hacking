@@ -252,12 +252,11 @@ newport_hw_get_mode_cs_params(int cfreq)
  * it available here.
  */
 void
-xmap9_write_mode(struct gfx_ctx *dc, uint32_t cfreq, uint8_t index,
-    uint32_t mode)
+xmap9_write_mode(struct gfx_ctx *dc, uint8_t index, uint32_t mode)
 {
 	const struct newport_dcb_cs_params *cs;
 
-	cs = newport_hw_get_mode_cs_params(cfreq);
+	cs = newport_hw_get_mode_cs_params(dc->cfreq);
 
 	/* wait for FIFO if needed */
 	xmap9_wait(dc);
@@ -273,39 +272,90 @@ xmap9_write_mode(struct gfx_ctx *dc, uint32_t cfreq, uint8_t index,
 	rex3_write(dc, REX3_REG_DCBDATA0, (index << 24) | (mode & 0xffffff));
 }
 
-#if 0
+/*
+ * Determine the DRAWMODE1 configuration to use.
+ *
+ * This calculates which drawplanes to use, which mode to put
+ * the drawer to use, the input and output pixel formats, etc.
+ */
+uint32_t
+newport_calc_drawmode1(struct gfx_ctx *ctx)
+{
+	/* For now only support ci8 in/out, for code bring-up */
+	return
+	    REX3_DRAWMODE1_DD_DD8 |
+	    REX3_DRAWMODE1_RWPACKED |
+	    REX3_DRAWMODE1_HD_HD8;
 
-/**** Helper functions ****/
-static void
+	/* other stuff to remember to set as i add more operating modes */
+#if 0
+	    REX3_DRAWMODE1_RGBMODE |
+	    REX3_DRAWMODE1_DITHER
+#endif
+}
+
+/*
+ * Determine the WRMODE to use.
+ *
+ * This takes into account the requested drawplanes and will
+ * remap them appropriately.
+ */
+uint32_t
+newport_calc_wrmode(struct gfx_ctx *ctx, uint32_t planemask)
+{
+	/* For now only support ci8 in/out */
+	return 0x000000ff;
+}
+
+/*
+ * Calculate the colour to use for COLORVRAM.
+ */
+uint32_t
+newport_calc_colorvram(struct gfx_ctx *ctx, uint32_t color)
+{
+	/* For now we're only supporting ci8 in/out */
+	return (color);
+}
+
+/**
+ * Solid fill a rectangle with the given color value.
+ *
+ * This doesn't do dithering or alpha blending or anything;
+ * it's a stright up fast fill.
+ */
+void
 newport_fill_rectangle(struct gfx_ctx *dc, int x1, int y1, int wi,
     int he, uint32_t color)
 {
+	uint32_t drawmode1;
+
 	int x2 = x1 + wi - 1;
 	int y2 = y1 + he - 1;
 
+	drawmode1 = newport_calc_drawmode1(dc);
+
 	rex3_wait_gfifo(dc);
-	
+
 	rex3_write(dc, REX3_REG_DRAWMODE0, REX3_DRAWMODE0_OPCODE_DRAW |
 	    REX3_DRAWMODE0_ADRMODE_BLOCK | REX3_DRAWMODE0_DOSETUP |
 	    REX3_DRAWMODE0_STOPONX | REX3_DRAWMODE0_STOPONY);
 	rex3_write(dc, REX3_REG_CLIPMODE, 0x1e00);
 	rex3_write(dc, REX3_REG_DRAWMODE1,
+	    drawmode1 |
 	    REX3_DRAWMODE1_PLANES_RGB |
-	    REX3_DRAWMODE1_DD_DD8 |
-	    REX3_DRAWMODE1_RWPACKED |
-	    REX3_DRAWMODE1_HD_HD8 |
 	    REX3_DRAWMODE1_COMPARE_LT |
 	    REX3_DRAWMODE1_COMPARE_EQ |
 	    REX3_DRAWMODE1_COMPARE_GT |
-	    REX3_DRAWMODE1_RGBMODE |
 	    REX3_DRAWMODE1_FASTCLEAR |
 	    REX3_DRAWMODE1_LO_SRC);
-	rex3_write(dc, REX3_REG_WRMASK, 0xffffffff);
-	rex3_write(dc, REX3_REG_COLORVRAM, color);
+	rex3_write(dc, REX3_REG_WRMASK, newport_calc_wrmode(dc, 0xffffffff));
+	rex3_write(dc, REX3_REG_COLORVRAM, newport_calc_colorvram(dc, color));
 	rex3_write(dc, REX3_REG_XYSTARTI, (x1 << REX3_XYSTARTI_XSHIFT) | y1);
 
 	rex3_write_go(dc, REX3_REG_XYENDI, (x2 << REX3_XYENDI_XSHIFT) | y2);
 }
+
+#if 0
 
 static void
 newport_bitblt(struct gfx_ctx *dc, int xs, int ys, int xd,
@@ -351,8 +401,9 @@ newport_bitblt(struct gfx_ctx *dc, int xs, int ys, int xd,
 
 	rex3_write_go(dc, REX3_REG_XYMOVE, tmp);
 }
+#endif
 
-static void
+void
 newport_cmap_setrgb(struct gfx_ctx *dc, int index, uint8_t r,
     uint8_t g, uint8_t b)
 {
@@ -381,62 +432,17 @@ newport_cmap_setrgb(struct gfx_ctx *dc, int index, uint8_t r,
 	rex3_write(dc, REX3_REG_DCBDATA0, (r << 24) + (g << 16) + (b << 8));
 }
 
-static void
-newport_get_resolution(struct gfx_ctx *dc)
-{
-	uint16_t vep,lines;
-	uint16_t linep,cols;
-	uint16_t data;
-
-	vep = vc2_read_ireg(dc, VC2_IREG_VIDEO_ENTRY);
-
-	dc->dc_xres = 0;
-	dc->dc_yres = 0;
-
-	for (;;) {
-		/* Iterate over runs in video timing table */
-
-		cols = 0;
-
-		linep = vc2_read_ram(dc, vep++);
-		lines = vc2_read_ram(dc, vep++);
-
-		if (lines == 0)
-			break;
-
-		do {
-			/* Iterate over state runs in line sequence table */
-		
-			data = vc2_read_ram(dc, linep++);
-
-			if ((data & 0x0001) == 0)
-				cols += (data >> 7) & 0xfe;
-
-			if ((data & 0x0080) == 0)
-				data = vc2_read_ram(dc, linep++);
-		} while ((data & 0x8000) == 0);
-
-		if (cols != 0) {
-			if (cols > dc->dc_xres)
-				dc->dc_xres = cols;
-
-			dc->dc_yres += lines;
-		}
-	}
-}
-
 /*
  * Read from an 8 bit CMAP register.
  *
  * This must only be used on individual CMAPs (0 or 1), not both.
  */
-static uint8_t
+uint8_t
 cmap_reg_read(struct gfx_ctx *dc, uint8_t id, uint8_t reg)
 {
 	if (id == NEWPORT_DCBADDR_CMAP_BOTH)
 		id = NEWPORT_DCBADDR_CMAP_0;
 
-	/* Get various revisions */
 	rex3_write(dc, REX3_REG_DCBMODE,
 	    REX3_DCBMODE_DW_1 |
 	    (id << REX3_DCBMODE_DCBADDR_SHIFT) |
@@ -447,110 +453,11 @@ cmap_reg_read(struct gfx_ctx *dc, uint8_t id, uint8_t reg)
 	return (uint8_t)(rex3_read(dc, REX3_REG_DCBDATA0) >> 24);
 }
 
-static void
-newport_probe_monitor(struct gfx_ctx *dc)
-{
-	const char *m;
-	uint8_t scratch;
-
-	/*
-	 * CMAP1 - the 4 monitor sense bits are on bits 7:4.
-	 *
-	 * Note that for MACH_SGI_IP22_GUINNESS (Indy), the monitor PROM
-	 * variable can override a 'default' monitor setting of 1024x768
-	 * with two others - H = 1280x1024x60Hz and S = 1280x1024x76Hz.
-	 * So when (eventually) doing a monitor ID lookup we'll also
-	 * need to handle that.
-	 */
-	scratch = cmap_reg_read(dc, NEWPORT_DCBADDR_CMAP_1,
-	    CMAP_DCBCRS_REVISION);
-	aprint_debug("%s: CMAP_1 REVISION 0x%02x\n", __func__, scratch);
-	dc->dc_monitor_cmap_id = (scratch >> 4) & 0x0f;
-	dc->dc_monitor_prom_id = -1;
-
-	/* Only check the PROM monitor on SGI Indy */
-	if (mach_subtype != MACH_SGI_IP22_GUINNESS)
-		return;
-
-	m = arcbios_GetEnvironmentVariable("monitor");
-	if (m == NULL)
-		return;
-	else if (m[0] == '0')
-		return;
-
-	/*
-	 * H = 1280x1024, 60Hz
-	 * S = 1280x1024, 76Hz
-	 */
-	if (m[0] == 'h' || m[0] == 'H')
-		dc->dc_monitor_prom_id = 10;
-	else if (m[0] == 'S')
-		dc->dc_monitor_prom_id = 1;
-}
-
 /*
- * Probe the hardware as handed to us by the boot firmware
- * before it's potentially fiddled with by the console and
- * X11 servers.
+ * Setup an RGB332 indexed colourmap at the given CMAP base.
  */
-static void
-newport_probe_hw(struct gfx_ctx *dc)
-{
-	uint32_t scratch;
-
-	/* Get various revisions */
-
-	/*
-	 * CMAP0 - CMAP revision bits 3:0, board revision bits 6:4,
-	 * If boardrev > 1 then the b7 == 1 signals an 8 bit framebuffer.
-	 */
-	rex3_wait_bfifo(dc);
-	scratch = cmap_reg_read(dc, NEWPORT_DCBADDR_CMAP_0,
-	    CMAP_DCBCRS_REVISION);
-	aprint_debug("%s: CMAP_0 REVISION 0x%02x\n", __func__, scratch);
-
-	dc->dc_boardrev = (scratch >> 4) & 0x07;
-	dc->dc_cmaprev = scratch & 0x07;
-
-	rex3_wait_bfifo(dc);
-	dc->dc_xmaprev = xmap9_read(dc, NEWPORT_DCBADDR_XMAP_0,
-	    XMAP9_DCBCRS_REVISION) & 0x07;
-	dc->dc_depth = ( (dc->dc_boardrev > 1) && (scratch & 0x80)) ? 8 : 24;
-
-	aprint_debug("%s: XMAP_0 REVISION: 0x%08x\n", __func__,
-	    xmap9_read(dc, NEWPORT_DCBADDR_XMAP_0, XMAP9_DCBCRS_REVISION));
-
-	scratch = vc2_read_ireg(dc, VC2_IREG_CONFIG);
-	dc->dc_vc2rev = (scratch & VC2_IREG_CONFIG_REVISION) >> 5;
-	aprint_debug("%s: VC2_IREG_CONFIG config: 0x%04x\n", __func__, scratch);
-}
-
-/*
- * Adjust the XMAP configuration based on the earlier probed board type.
- *
- * This isn't the actual operating mode; this is instead the underlying
- * hardware type.
- */
-static void
-newport_hw_adjust_xmap_cfg(struct gfx_ctx *dc, uint8_t *dcbcfg)
-{
-
-	/* Configure 8 or 24 bit hardware */
-	if (dc->dc_depth == 8)
-		*dcbcfg |= XMAP9_CONFIG_8BIT_SYSTEM;
-	else
-		*dcbcfg &= ~XMAP9_CONFIG_8BIT_SYSTEM;
-
-	/* XXX TODO: we aren't using PUP, so disable it? */
-
-	/*
-	 * Note: we're leaving the event/odd, fast/slow pclk,
-	 * video option board config and colourmap alone.
-	 */
-}
-
-static void
-newport_setup_hw_ci_cmap(struct gfx_ctx *dc)
+void
+newport_setup_hw_ci_cmap(struct gfx_ctx *dc, uint32_t base)
 {
 	int i;
 	uint8_t ctmp;
@@ -575,12 +482,15 @@ newport_setup_hw_ci_cmap(struct gfx_ctx *dc)
 		ctmp |= ctmp >> 4;
 		our_cmap[i * 3 + 2] = ctmp;
 
-		newport_cmap_setrgb(dc, i, our_cmap[i * 3],
+		newport_cmap_setrgb(dc, i + base, our_cmap[i * 3],
 		    our_cmap[i * 3 + 1], our_cmap[i * 3 + 2]);
 	}
 }
 
-static void
+/*
+ * Setup an RGB lookup table at RGB2.
+ */
+void
 newport_setup_hw_rgb2_cmap(struct gfx_ctx *dc)
 {
 	int i;
@@ -603,9 +513,8 @@ newport_setup_hw_rgb2_cmap(struct gfx_ctx *dc)
  * Since we're not currently filling the VC2 DID table with values,
  * just program them all in here with the same configuration.
  */
-static void
-newport_setup_hw_xmap9_modes(struct gfx_ctx *dc,
-    uint32_t mode_mask)
+void
+newport_setup_hw_xmap9_modes(struct gfx_ctx *dc, uint32_t mode_mask)
 {
 	int i;
 
@@ -617,9 +526,10 @@ newport_setup_hw_xmap9_modes(struct gfx_ctx *dc,
 	    XMAP9_DCBCRS_MODE_SELECT, 0);
 }
 
-static void
-newport_setup_hw(struct gfx_ctx *dc, int depth)
+bool
+newport_setup_hw(struct gfx_ctx *dc)
 {
+#if 0
 	uint16_t __unused(curp), tmp;
 	uint8_t dcbcfg;
 
@@ -637,32 +547,35 @@ newport_setup_hw(struct gfx_ctx *dc, int depth)
 
 	/* disable all clipping */
 	rex3_write(dc, REX3_REG_CLIPMODE, 0x1e00);
+#endif
 
-	/* Setup XMAP9s */
 	rex3_wait_bfifo(dc);
+
+	/* Set cursor to use CMAP0 */
 	xmap9_write(dc, NEWPORT_DCBADDR_XMAP_BOTH, XMAP9_DCBCRS_CURSOR_CMAP,
 	    0);
 
-	/*
-	 * Always configure the 8 bit or 24 bit configuration regardless
-	 * of the desired bit depth.  The XMAP9 documentation mentions this
-	 * does have some behaviour changes regardless of the pixel formats
-	 * being used.
-	 */
-	rex3_wait_bfifo(dc);
-	dcbcfg = xmap9_read(dc, NEWPORT_DCBADDR_XMAP_0, XMAP9_DCBCRS_CONFIG);
-	newport_hw_adjust_xmap_cfg(dc, &dcbcfg);
-	rex3_wait_bfifo(dc);
-	xmap9_write(dc, NEWPORT_DCBADDR_XMAP_0, XMAP9_DCBCRS_CONFIG, dcbcfg);
-	aprint_debug("%s: XMAP_0 config: 0x%02x\n", __func__, dcbcfg);
-
-	dcbcfg = xmap9_read(dc, NEWPORT_DCBADDR_XMAP_1, XMAP9_DCBCRS_CONFIG);
-	newport_hw_adjust_xmap_cfg(dc, &dcbcfg);
-	rex3_wait_bfifo(dc);
-	xmap9_write(dc, NEWPORT_DCBADDR_XMAP_1, XMAP9_DCBCRS_CONFIG, dcbcfg);
-	aprint_debug("%s: XMAP_1 config: 0x%02x\n", __func__, dcbcfg);
-
-	if (depth == 8) {
+	switch (dc->fb_mode) {
+	case NewportBppModeRgb8:
+		printf("%s: Configuring output 8 bit RGB\n", __func__);
+		/*
+		 * Configure the hardware to use the a 24 bit RGB table at
+		 * RGB2 in CMAP.
+		 */
+		newport_setup_hw_xmap9_modes(dc, XMAP9_MODE_GAMMA_BYPASS |
+		    XMAP9_MODE_PIXSIZE_8BPP | XMAP9_MODE_PIXMODE_RGB2);
+		break;
+	case NewportBppModeRgb24:
+		printf("%s: Configuring output 24 bit RGB\n", __func__);
+		/*
+		 * Configure the hardware to use the a 24 bit RGB table at
+		 * RGB2 in CMAP.
+		 */
+		newport_setup_hw_xmap9_modes(dc, XMAP9_MODE_GAMMA_BYPASS |
+		    XMAP9_MODE_PIXSIZE_24BPP | XMAP9_MODE_PIXMODE_RGB2);
+		break;
+	case NewportBppModeCi8:
+		printf("%s: Configuring output 8 bit CI\n", __func__);
 		/*
 		 * Configure an 8 bit RGB colour map that uses the netbsd
 		 * packed RGB 332 format.  The rendering routines use these
@@ -670,13 +583,11 @@ newport_setup_hw(struct gfx_ctx *dc, int depth)
 		 */
 		newport_setup_hw_xmap9_modes(dc, XMAP9_MODE_GAMMA_BYPASS |
 		    XMAP9_MODE_PIXSIZE_8BPP | XMAP9_MODE_PIXMODE_CI);
-	} else {
-		/*
-		 * Configure the hardware to use the a 24 bit RGB table at
-		 * RGB2 in CMAP.
-		 */
-		newport_setup_hw_xmap9_modes(dc, XMAP9_MODE_GAMMA_BYPASS |
-		    XMAP9_MODE_PIXSIZE_24BPP | XMAP9_MODE_PIXMODE_RGB2);
+		break;
+	default:
+		printf("%s: unsupported FB mode (%d)\n", __func__,
+		    dc->fb_mode);
+		return false;
 	}
 
 	/* Setup REX3 */
@@ -690,7 +601,7 @@ newport_setup_hw(struct gfx_ctx *dc, int depth)
 	 * RGB 332 and not have to teach the NetBSD console code or
 	 * this driver to map RGB 332 -> the Newport interlaced RGB8 format.
 	 */
-	newport_setup_hw_ci_cmap(dc);
+	newport_setup_hw_ci_cmap(dc, 0);
 
 	/*
 	 * Write a ramp into RGB2 CMAP.
@@ -701,6 +612,6 @@ newport_setup_hw(struct gfx_ctx *dc, int depth)
 	 * or X11 will allocate private colourmaps as needed.
 	 */
 	newport_setup_hw_rgb2_cmap(dc);
-}
 
-#endif
+	return true;
+}

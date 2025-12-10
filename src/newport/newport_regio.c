@@ -40,7 +40,5 @@ rex3_read(struct gfx_ctx *ctx, uint32_t rexreg)
 void
 rex3_write_go(struct gfx_ctx *ctx, uint32_t rexreg, uint32_t val)
 {
-	volatile uint32_t *reg;
-
 	rex3_write(ctx, rexreg + REX3_REG_GO, val);
 }
