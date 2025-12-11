@@ -137,6 +137,9 @@ main(int argc, const char *argv[])
 	newport_fill_rectangle(&ctx, 0, 0, 1280, 1024, 0);
 
 	clock_gettime(CLOCK_MONOTONIC, &ts_start);
+
+	/* Do rectangle fill setup - this stalls the graphics pipeline */
+	newport_fill_rectangle_setup(&ctx);
 	for (int i = 0; i < arg1; i++) {
 		int x, y, w, h, c;
 
@@ -146,6 +149,7 @@ main(int argc, const char *argv[])
 		h = 32;
 		c = random() % 0xffffff;
 
+		/* This doesn't stall the graphics pipeline */
 		newport_fill_rectangle(&ctx, x, y, w, h, c);
 	}
 	clock_gettime(CLOCK_MONOTONIC, &ts_end);

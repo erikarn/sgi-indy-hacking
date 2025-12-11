@@ -25,6 +25,9 @@ struct gfx_ctx {
 	NewportBppMode pixel_mode;
 
 	bool log_regio;
+
+	/* how many entries are in the FIFO */
+	int gfifo_left;
 };
 
 #endif	/* __NEWPORT_CTX_H__ */

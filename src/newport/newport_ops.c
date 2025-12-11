@@ -262,12 +262,18 @@ newport_fill_rectangle_fast(struct gfx_ctx *dc, int x1, int y1, int wi,
 
 	drawmode1 = newport_calc_drawmode1(dc);
 
-	rex3_wait_gfifo(dc);
+	rex3_wait_gfifo_idle(dc, 0);
 
+	/* This stalls the pipeline */
 	rex3_write(dc, REX3_REG_DRAWMODE0, REX3_DRAWMODE0_OPCODE_DRAW |
 	    REX3_DRAWMODE0_ADRMODE_BLOCK | REX3_DRAWMODE0_DOSETUP |
 	    REX3_DRAWMODE0_STOPONX | REX3_DRAWMODE0_STOPONY);
 	rex3_write(dc, REX3_REG_CLIPMODE, 0x1e00);
+	rex3_write(dc, REX3_REG_WRMASK, newport_calc_wrmode(dc, 0xffffffff));
+
+
+	/* These do not stall the pipeline */
+	rex3_wait_gfifo(dc, 4);
 	rex3_write(dc, REX3_REG_DRAWMODE1,
 	    drawmode1 |
 	    REX3_DRAWMODE1_PLANES_RGB |
@@ -276,7 +282,6 @@ newport_fill_rectangle_fast(struct gfx_ctx *dc, int x1, int y1, int wi,
 	    REX3_DRAWMODE1_COMPARE_GT |
 	    REX3_DRAWMODE1_FASTCLEAR |
 	    REX3_DRAWMODE1_LO_SRC);
-	rex3_write(dc, REX3_REG_WRMASK, newport_calc_wrmode(dc, 0xffffffff));
 	rex3_write(dc, REX3_REG_COLORVRAM, newport_calc_colorvram(dc, color));
 	rex3_write(dc, REX3_REG_XYSTARTI, (x1 << REX3_XYSTARTI_XSHIFT) | y1);
 
@@ -285,7 +290,25 @@ newport_fill_rectangle_fast(struct gfx_ctx *dc, int x1, int y1, int wi,
 }
 
 /**
+ * Setup for a solid rectangle fill.
+ */
+void
+newport_fill_rectangle_setup(struct gfx_ctx *dc)
+{
+	rex3_wait_gfifo_idle(dc, 0);
+
+	rex3_write(dc, REX3_REG_DRAWMODE0, REX3_DRAWMODE0_OPCODE_DRAW |
+	    REX3_DRAWMODE0_ADRMODE_BLOCK | REX3_DRAWMODE0_DOSETUP |
+	    REX3_DRAWMODE0_STOPONX | REX3_DRAWMODE0_STOPONY);
+	rex3_write(dc, REX3_REG_CLIPMODE, 0x1e00);
+	rex3_write(dc, REX3_REG_WRMASK, newport_calc_wrmode(dc, 0xffffffff));
+}
+
+/**
  * Solid fill a rectangle with the given color value.
+ *
+ * These routines don't stall the FIFO, but we need to reserve
+ * enough fifo slots!
  */
 void
 newport_fill_rectangle(struct gfx_ctx *dc, int x1, int y1, int wi,
@@ -300,12 +323,7 @@ newport_fill_rectangle(struct gfx_ctx *dc, int x1, int y1, int wi,
 
 	drawmode1 = newport_calc_drawmode1(dc);
 
-	rex3_wait_gfifo(dc);
-
-	rex3_write(dc, REX3_REG_DRAWMODE0, REX3_DRAWMODE0_OPCODE_DRAW |
-	    REX3_DRAWMODE0_ADRMODE_BLOCK | REX3_DRAWMODE0_DOSETUP |
-	    REX3_DRAWMODE0_STOPONX | REX3_DRAWMODE0_STOPONY);
-	rex3_write(dc, REX3_REG_CLIPMODE, 0x1e00);
+	rex3_wait_gfifo(dc, 4);
 	rex3_write(dc, REX3_REG_DRAWMODE1,
 	    drawmode1 |
 	    REX3_DRAWMODE1_PLANES_RGB |
@@ -313,10 +331,8 @@ newport_fill_rectangle(struct gfx_ctx *dc, int x1, int y1, int wi,
 	    REX3_DRAWMODE1_COMPARE_EQ |
 	    REX3_DRAWMODE1_COMPARE_GT |
 	    REX3_DRAWMODE1_LO_SRC);
-	rex3_write(dc, REX3_REG_WRMASK, newport_calc_wrmode(dc, 0xffffffff));
 	rex3_write(dc, REX3_REG_COLORI, newport_calc_colori_color(dc, color));
 	rex3_write(dc, REX3_REG_XYSTARTI, (x1 << REX3_XYSTARTI_XSHIFT) | y1);
-
 	rex3_write_go(dc, REX3_REG_XYENDI, (x2 << REX3_XYENDI_XSHIFT) | y2);
 	dc->log_regio = false;
 }

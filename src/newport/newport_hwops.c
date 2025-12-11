@@ -7,6 +7,7 @@
 #include <strings.h>
 #include <dev/wscons/wsconsio.h>
 #include <err.h>
+#include <sched.h>
 
 #include <sys/ioctl.h>
 #include <sys/mman.h>
@@ -38,13 +39,54 @@ static struct newport_dcb_cs_params newport_dcb_cs_fast = { 0, 1, 2 };
  * Wait for the graphics FIFO and for it to be empty.
  *
  * This FIFO is used for submitted graphics register writes.
+ *
+ * nentries reserves that many entries in the FIFO tracking.
  */
 void
-rex3_wait_gfifo(struct gfx_ctx *dc)
+rex3_wait_gfifo(struct gfx_ctx *dc, int nentries)
+{
+	uint32_t fifo_level, reg;
+
+	/* Ensure we don't shoot past the fifo depth */
+	if (nentries > NEWPORT_GFIFO_ENTRIES)
+		nentries = NEWPORT_GFIFO_ENTRIES;
+
+	/* If we have enough slots left, then return it */
+	if (nentries <= dc->gfifo_left) {
+		dc->gfifo_left -= nentries;
+		return;
+	}
+
+	/* Wait until we have enough slots for this request */
+	while (true) {
+		reg = rex3_read(dc, REX3_REG_STATUS);
+		if ((reg & REX3_STATUS_GFXBUSY) == 0) {
+			dc->gfifo_left = NEWPORT_GFIFO_ENTRIES - nentries;
+			break;
+		}
+
+		/* GFXBUSY is set */
+		fifo_level = (reg >> 7) & 0x3f;
+		if (fifo_level >= nentries) {
+			dc->gfifo_left = fifo_level - nentries;
+			break;
+		}
+		/* XXX ew */
+		sched_yield();
+	}
+}
+
+/*
+ * Fully wait for the graphics FIFO to be idle and then
+ * reserve some FIFO slots.
+ */
+void
+rex3_wait_gfifo_idle(struct gfx_ctx *dc, int nentries)
 {
 	while (rex3_read(dc, REX3_REG_STATUS) &
 	    (REX3_STATUS_GFXBUSY | REX3_STATUS_PIPELEVEL_MASK))
 		;
+	dc->gfifo_left = NEWPORT_GFIFO_ENTRIES - nentries;
 }
 
 /*
