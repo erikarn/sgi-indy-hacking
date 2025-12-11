@@ -258,7 +258,7 @@ newport_fill_rectangle_fast(struct gfx_ctx *dc, int x1, int y1, int wi,
 	int x2 = x1 + wi - 1;
 	int y2 = y1 + he - 1;
 
-	dc->log_regio = true;
+//	dc->log_regio = true;
 
 	drawmode1 = newport_calc_drawmode1(dc);
 
@@ -296,7 +296,7 @@ newport_fill_rectangle(struct gfx_ctx *dc, int x1, int y1, int wi,
 	int x2 = x1 + wi - 1;
 	int y2 = y1 + he - 1;
 
-	dc->log_regio = true;
+//	dc->log_regio = true;
 
 	drawmode1 = newport_calc_drawmode1(dc);
 

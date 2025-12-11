@@ -8,6 +8,7 @@
 #include <strings.h>
 #include <dev/wscons/wsconsio.h>
 #include <err.h>
+#include <time.h>
 
 #include <sys/ioctl.h>
 #include <sys/mman.h>
@@ -106,7 +107,9 @@ int
 main(int argc, const char *argv[])
 {
 	struct gfx_ctx ctx;
-	uint32_t color;
+	uint32_t arg1;
+	struct timespec ts_start, ts_end;
+	uint64_t ts;
 
 	if (! verify_newport()) {
 		err(127, "Not a newport!\n");
@@ -127,11 +130,32 @@ main(int argc, const char *argv[])
 
 	newport_setup_hw(&ctx);
 
-	color = 0;
+	arg1 = 1;
 	if (argc > 1)
-		color = strtoul(argv[1], NULL, 0);
+		arg1 = strtoul(argv[1], NULL, 0);
 
-	newport_fill_rectangle(&ctx, 0, 0, 1280, 1024, color);
+	newport_fill_rectangle(&ctx, 0, 0, 1280, 1024, 0);
+
+	clock_gettime(CLOCK_MONOTONIC, &ts_start);
+	for (int i = 0; i < arg1; i++) {
+		int x, y, w, h, c;
+
+		x = random() % 1280;
+		y = random() % 1024;
+		w = 32;
+		h = 32;
+		c = random() % 0xffffff;
+
+		newport_fill_rectangle(&ctx, x, y, w, h, c);
+	}
+	clock_gettime(CLOCK_MONOTONIC, &ts_end);
+	ts = (ts_end.tv_sec * 1000000) + (ts_end.tv_nsec / 1000);
+	ts = ts - ((ts_start.tv_sec * 1000000) + (ts_start.tv_nsec / 1000));
+
+	printf("newport: %d fills in %llu milliseconds, %.3f fills/sec\n",
+	    arg1,
+	    ts / 1000,
+	    (float) (((float) arg1 * 1000.0) / ((float) ts / 1000.0)));
 
 	sleep(1);
 
