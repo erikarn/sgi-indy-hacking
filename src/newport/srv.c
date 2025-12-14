@@ -103,13 +103,52 @@ newport_close(struct gfx_ctx *ctx)
 	}
 }
 
+static void
+benchmark_rectangle(struct gfx_ctx *ctx, int tw, int th, int tcount)
+{
+	struct timespec ts_start, ts_end;
+	uint64_t ts;
+	float fills_per_sec, pixels_per_sec;
+
+	newport_fill_rectangle_fast(ctx, 0, 0, 1280, 1024, 0);
+
+	clock_gettime(CLOCK_MONOTONIC, &ts_start);
+
+	/* Do rectangle fill setup - this stalls the graphics pipeline */
+	newport_fill_rectangle_setup(ctx);
+	for (int i = 0; i < tcount; i++) {
+		int x, y, w, h, c;
+
+		x = random() % 1280;
+		y = random() % 1024;
+		w = tw;
+		h = th;
+		c = random() % 0xffffff;
+
+		/* This doesn't stall the graphics pipeline */
+		newport_fill_rectangle(ctx, x, y, w, h, c);
+	}
+	clock_gettime(CLOCK_MONOTONIC, &ts_end);
+	ts = (ts_end.tv_sec * 1000000) + (ts_end.tv_nsec / 1000);
+	ts = ts - ((ts_start.tv_sec * 1000000) + (ts_start.tv_nsec / 1000));
+	fills_per_sec = (float) (((float) tcount * 1000.0) /
+	    ((float) ts / 1000.0));
+	pixels_per_sec = fills_per_sec * (float) th * (float) tw;
+
+	printf("newport: %dx%d: %d fills in %llu milliseconds, "
+	    "%.3f fills/sec, %.3f pixels/sec\n",
+	    tw, th,
+	    tcount,
+	    ts / 1000,
+	    fills_per_sec,
+	    pixels_per_sec);
+}
+
 int
 main(int argc, const char *argv[])
 {
 	struct gfx_ctx ctx;
 	uint32_t arg1;
-	struct timespec ts_start, ts_end;
-	uint64_t ts;
 
 	if (! verify_newport()) {
 		err(127, "Not a newport!\n");
@@ -134,34 +173,13 @@ main(int argc, const char *argv[])
 	if (argc > 1)
 		arg1 = strtoul(argv[1], NULL, 0);
 
-	newport_fill_rectangle(&ctx, 0, 0, 1280, 1024, 0);
+	newport_fill_rectangle_fast(&ctx, 0, 0, 1280, 1024, 0);
 
-	clock_gettime(CLOCK_MONOTONIC, &ts_start);
-
-	/* Do rectangle fill setup - this stalls the graphics pipeline */
-	newport_fill_rectangle_setup(&ctx);
-	for (int i = 0; i < arg1; i++) {
-		int x, y, w, h, c;
-
-		x = random() % 1280;
-		y = random() % 1024;
-		w = 32;
-		h = 32;
-		c = random() % 0xffffff;
-
-		/* This doesn't stall the graphics pipeline */
-		newport_fill_rectangle(&ctx, x, y, w, h, c);
-	}
-	clock_gettime(CLOCK_MONOTONIC, &ts_end);
-	ts = (ts_end.tv_sec * 1000000) + (ts_end.tv_nsec / 1000);
-	ts = ts - ((ts_start.tv_sec * 1000000) + (ts_start.tv_nsec / 1000));
-
-	printf("newport: %d fills in %llu milliseconds, %.3f fills/sec\n",
-	    arg1,
-	    ts / 1000,
-	    (float) (((float) arg1 * 1000.0) / ((float) ts / 1000.0)));
-
-	sleep(1);
+	benchmark_rectangle(&ctx, 8, 8, arg1);
+	benchmark_rectangle(&ctx, 16, 16, arg1);
+	benchmark_rectangle(&ctx, 32, 32, arg1);
+	benchmark_rectangle(&ctx, 64, 64, arg1);
+	benchmark_rectangle(&ctx, 128, 128, arg1);
 
 	newport_close(&ctx);
 
