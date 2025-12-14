@@ -150,7 +150,8 @@ int
 main(int argc, const char *argv[])
 {
 	struct gfx_ctx ctx;
-	uint32_t arg1;
+	const char *mode;
+	uint32_t arg2;
 
 	if (! verify_newport()) {
 		err(127, "Not a newport!\n");
@@ -173,17 +174,26 @@ main(int argc, const char *argv[])
 
 	newport_setup_hw(&ctx);
 
-	arg1 = 1;
+	mode = "benchmark";
+
 	if (argc > 1)
-		arg1 = strtoul(argv[1], NULL, 0);
+		mode = strdup(argv[1]);
 
-	newport_fill_rectangle_fast(&ctx, 0, 0, 1280, 1024, 0);
+	arg2 = 1;
+	if (argc > 2)
+		arg2 = strtoul(argv[2], NULL, 0);
 
-	benchmark_rectangle(&ctx, 8, 8, arg1);
-	benchmark_rectangle(&ctx, 16, 16, arg1);
-	benchmark_rectangle(&ctx, 32, 32, arg1);
-	benchmark_rectangle(&ctx, 64, 64, arg1);
-	benchmark_rectangle(&ctx, 128, 128, arg1);
+	if (strcmp(mode, "benchmark") == 0) {
+		newport_fill_rectangle_fast(&ctx, 0, 0, 1280, 1024, 0);
+
+		benchmark_rectangle(&ctx, 8, 8, arg2);
+		benchmark_rectangle(&ctx, 16, 16, arg2);
+		benchmark_rectangle(&ctx, 32, 32, arg2);
+		benchmark_rectangle(&ctx, 64, 64, arg2);
+		benchmark_rectangle(&ctx, 128, 128, arg2);
+	} else {
+		printf("newport: unknown mode '%s'\n", __func__);
+	}
 
 	newport_close(&ctx);
 
