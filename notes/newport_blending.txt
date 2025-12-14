@@ -1,0 +1,18 @@
+
+Alpha / Blend Blending
+----------------------
+
+This one is TBD as I need to go read up more about what's supposed to
+happen, but the TL;DR is:
+
+ * BLEND in DRAWMODE1 needs to be set
+ * To use the DDA for Alpha values you need to set COLORALPHA appropriately,
+   and I do need to sit down and verify how that's programmed.
+ * When blitting it in via the HOSTRW register you should use the ABGR format,
+   and leave COLOURALPHA alone.
+ * In theory you can combine it with the SHADE settings, but I'm nowhere
+   near verifying those yet.
+ * BLENDALPHA1 in DRAWMODE1 controls whether the source alpha is SFACTOR,
+   or just the fixed value "1.0".
+ * SFACTOR and DFACTOR implement the expected blend/alpha blend functions,
+   they're documented in the REX3 PDF.

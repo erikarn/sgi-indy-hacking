@@ -1,0 +1,53 @@
+
+RGBA shading
+------------
+
+RGBA shading requires a few things:
+
+ * SHADE enabled in DRAWMODE0
+ * Initial colour setup in COLORI
+ * The slope to use in SLOPERED, SLOPEBLUE, SLOPEGREEN, SLOPEALPHA
+
+The slope values are either signed magnitude or twos complement values.
+It looks like the SLOPE values are broken up into three/four pieces.
+
+I need to verify this in more detail though!
+
+So, tentatively:
+
+ * Bit 31 - signed or unsigned for signed magnitude
+ * Bit 30 - 1 = signed magnitude, 0 = twos complement values
+ * Bit 10:0 - 11 bit fractional increment/decrement
+ * Bit 18:11 - (RGB) 8 bit whole value increment/decrement
+ * Bit 23:11 - (CI) 12 bit whole value increment/decrement
+
+There's no obvious overflow behaviour - it looks like it will over/under
+flow the value rather than be clamped.
+
+When rendering rectangles, it doesn't reset the RGBA iterators at the
+beginning of every Y line; so you can't easily render a controllable
+fixed 1D or 2D gradient on a rectangle.  (Which honestly is a shame;
+that would've been super neat.)
+
+I think you need to rasterise a rectangle and push individual XSTARTI/XENDI
+values or maybe DMA into the XSTARTENDI register.  I'm not sure if the
+DDA iterator will reset at the beginning of each line in this instance;
+it would be interesting to experiment to see if it does.
+
+For shading a fixed gradient Ystart -> Yend, the hardware looks like it
+will do the X span from Xstart -> Xend and use the DDAs to implement
+the RBGA shading.
+
+For shading a gradient across Ystart -> Yend I think I'm going to need
+to implement the DDA on the host CPU side using fixed point math because
+there's no secondary iterator there.  Maybe (!) I can do that using
+line drawing instead of spans, but horizontal line drawing is slower
+than spans.
+
+If I want to do both then I may as well just implement the RGBA DDA
+algorithm on the host CPU side and feed the beginning values in and
+render horizontal spans, with the hardware doing the RGBA DDA for
+said horizonal spans and the software doing it between scanlines.
+
+(Which I'm going to need to do for triangles anyway..)
+
