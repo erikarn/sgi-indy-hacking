@@ -202,6 +202,10 @@ newport_calc_colorvram(struct gfx_ctx *ctx, uint32_t color)
 	return (color);
 }
 
+/**
+ * The HOSTRW packed colour is either ABGR-8888 or CI-8.
+ * Any other format has to be converted to these.
+ */
 uint32_t
 newport_calc_hostrw_color(struct gfx_ctx *ctx, uint32_t color)
 {
@@ -291,6 +295,12 @@ newport_fill_rectangle_fast(struct gfx_ctx *dc, int x1, int y1, int wi,
 
 /**
  * Setup for a solid rectangle fill.
+ *
+ * NOTE: it doesn't LOOK like I need to setup DRAWMODE1 each time if we're
+ * drawing back to back rectangles with the same configuration (eg same
+ * dither, same RGB planes, raster op) but it still seems to top out at
+ * about 114 million span fill pixels/sec @ 128x128, 127 million pix/sec
+ * @ 512x512, regardless of dither on/off.
  */
 void
 newport_fill_rectangle_setup(struct gfx_ctx *dc)
