@@ -65,8 +65,12 @@ rex3_wait_gfifo(struct gfx_ctx *dc, int nentries)
 			break;
 		}
 
-		/* GFXBUSY is set */
-		fifo_level = (reg >> 7) & 0x3f;
+		/*
+		 * GFXBUSY is set; the GFIFOLEVEL register is valid
+		 * GFIFOLEVEL is how many entries are active in the FIFO, so
+		 * we need to subtract it from GFIFOENTRIES to see what's left.
+		 */
+		fifo_level = NEWPORT_GFIFO_ENTRIES - ((reg >> 7) & 0x3f);
 		if (fifo_level >= nentries) {
 			dc->gfifo_left = fifo_level - nentries;
 			break;
