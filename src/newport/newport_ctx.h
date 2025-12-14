@@ -11,6 +11,12 @@ typedef enum {
 	NewportBppModeCi8 = 4,
 } NewportBppMode;
 
+typedef enum {
+	NewportDoubleBufferNone = 0,
+	NewportDoubleBufferA = 1,
+	NewportDoubleBufferB = 2,
+} NewportDoubleBufferMode;
+
 struct gfx_ctx {
 	int fd;
 	void *addr;
@@ -23,6 +29,12 @@ struct gfx_ctx {
 
 	/* Incoming pixel mode (for HOSTRW, converting stuff, etc) */
 	NewportBppMode pixel_mode;
+
+	/* Double buffer configuration */
+	/* Display buffer */
+	NewportDoubleBufferMode display_buffer;
+	/* Draw buffer */
+	NewportDoubleBufferMode draw_buffer;
 
 	bool log_regio;
 

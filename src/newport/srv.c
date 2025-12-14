@@ -41,6 +41,8 @@ gfx_ctx_init(struct gfx_ctx *ctx)
 	/* Defaults */
 	ctx->fb_mode = NewportBppModeCi8;
 	ctx->pixel_mode = NewportBppModeCi8;
+	ctx->display_buffer = NewportDoubleBufferNone;
+	ctx->draw_buffer = NewportDoubleBufferNone;
 	ctx->cfreq = 70; /* 1024x768 60Hz */
 }
 
@@ -165,6 +167,8 @@ main(int argc, const char *argv[])
 	/* Set configuration to use */
 	ctx.fb_mode = NewportBppModeRgb8; /* output is rgb8 */
 	ctx.pixel_mode = NewportBppModeRgb24; /* input is rgb888 */
+	ctx.display_buffer = NewportDoubleBufferNone;
+	ctx.draw_buffer = NewportDoubleBufferNone;
 	ctx.cfreq = 70; /* 1024x768 60Hz */
 
 	newport_setup_hw(&ctx);
