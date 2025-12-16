@@ -150,7 +150,7 @@ bres_triangle(struct point2d *plist, struct scanline_list **slist)
 
 		/* Flat top - b, mp, c, mp.y == c.y */
 		bres_triangle_flat(*slist, plist[c].x, plist[c].y,
-		    mp.x, plist[b].x, plist[b].y);
+		    plist[b].x, mp.x, plist[b].y);
 	}
 }
 

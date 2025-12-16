@@ -146,7 +146,7 @@ test_triangle(struct point2d *plist)
 
 		/* Flat top - b, mp, c, mp.y == c.y */
 		test_triangle_1(plist[c].x, plist[c].y,
-		    mp.x, plist[b].x, plist[b].y);
+		    plist[b].x, mp.x, plist[b].y);
 	}
 }
 

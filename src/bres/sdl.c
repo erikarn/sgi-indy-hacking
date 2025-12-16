@@ -83,7 +83,10 @@ SDL_UpdateWindowSurface(window);
 
 SDL_LockSurface(surface);
 
-do_triangle(50, 50, 100, 100, 30, 120, 0x0000ff, 0x00ff00, 0xff0000);
+//do_triangle(50, 50, 100, 100, 30, 120, 0x0000ff, 0x00ff00, 0xff0000);
+do_triangle(50, 50, 30, 70, 40, 80, 0x0000ff, 0x00ff00, 0xff0000);
+// test_triangle_xy(50, 50, 30, 70, 40, 80);
+
 
 SDL_UnlockSurface(surface);
 SDL_UpdateWindowSurface(window);
