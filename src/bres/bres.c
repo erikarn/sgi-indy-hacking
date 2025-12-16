@@ -6,6 +6,7 @@
 
 #include "point.h"
 #include "bres.h"
+#include "scanline.h"
 
 /*
  * Experiments rendering a flat top or bottom triangle
@@ -83,7 +84,7 @@ test_triangle_1(int x1, int y1, int x2l, int x2r, int y2)
  * scan list.
  */
 void
-test_triangle(struct point2d *plist)
+test_triangle(struct point2d *plist, struct scanline_list **slist)
 {
 	struct point2d mp;
 	bool valid_mp;
@@ -108,6 +109,9 @@ test_triangle(struct point2d *plist)
 	    plist[a].x, plist[a].y,
 	    plist[b].x, plist[b].y,
 	    plist[c].x, plist[c].y);
+
+	/* Figure out how big a scanlist to create */
+	*slist = scanline_list_alloc(plist[c].y - plist[a].y);
 
 	if (plist[b].y == plist[c].y) {
 		/* Flat bottom triangle */
@@ -146,7 +150,8 @@ test_triangle(struct point2d *plist)
 }
 
 void
-test_triangle_xy(int x1, int y1, int x2, int y2, int x3, int y3)
+test_triangle_xy(int x1, int y1, int x2, int y2, int x3, int y3,
+    struct scanline_list **slist)
 {
 	struct point2d p[3];
 
@@ -154,5 +159,5 @@ test_triangle_xy(int x1, int y1, int x2, int y2, int x3, int y3)
 	p[1].x = x2; p[1].y = y2;
 	p[2].x = x3; p[2].y = y3;
 
-	test_triangle(p);
+	test_triangle(p, slist);
 }

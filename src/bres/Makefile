@@ -6,8 +6,8 @@ all: test sdl
 
 test: test.o
 
-sdl: sdl.o bres.o
-	$(CC) sdl.o bres.o -o sdl $(LDFLAGS) -lSDL2
+sdl: sdl.o bres.o scanline.o
+	$(CC) sdl.o bres.o scanline.o -o sdl $(LDFLAGS) -lSDL2
 
 clean:
 	rm -f *.o test sdl
