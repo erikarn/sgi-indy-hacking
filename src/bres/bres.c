@@ -32,7 +32,8 @@
  * TODO: do i have all the error terms correct?
  */
 void
-test_triangle_1(int x1, int y1, int x2l, int x2r, int y2)
+bres_triangle_flat(struct scanline_list *slist, int x1, int y1, int x2l,
+     int x2r, int y2)
 {
 	const int xl_sign = (x2l < x1) ? -1 : 1;
 	const int xr_sign = (x2r < x1) ? -1 : 1;
@@ -44,16 +45,18 @@ test_triangle_1(int x1, int y1, int x2l, int x2r, int y2)
 	int E_left = -((y2 - y1) * y_sign) - (x2l - x1);
 	int E_right = -((y2 - y1) * y_sign) - (x2r - x1);
 
+#if 0
 	printf("%s:  (%d,%d) -> (%d,%d), (%d,%d) \n",
 	    __func__, x1, y1, x2l, y2, x2r, y2);
 	printf("%s: xl_sign=%d, xr_sign=%d, y_sign=%d\n", __func__, xl_sign, xr_sign, y_sign);
+#endif
 
 	/*
 	 * Handle y1 == y2; but ideally the caller would not bother and
 	 * just render a single span.
 	 */
 	if (y1 == y2) {
-		printf("%s:  (%d, %d),%d\n", __func__, X_left, X_right, y1);
+		scanline_list_push(slist, X_left, X_right, y1);
 		return;
 	}
 
@@ -72,7 +75,7 @@ test_triangle_1(int x1, int y1, int x2l, int x2r, int y2)
 			E_right -= 2* ((y2 - y1) * y_sign);
 		}
 
-		printf("%s:  (%d, %d),%d\n", __func__, X_left, X_right, yi);
+		scanline_list_push(slist, X_left, X_right, yi);
 
 		E_left -= 2 * -xl_sign * (x2l - x1);
 		E_right -= 2 * -xr_sign * (x2r - x1);
@@ -84,7 +87,7 @@ test_triangle_1(int x1, int y1, int x2l, int x2r, int y2)
  * scan list.
  */
 void
-test_triangle(struct point2d *plist, struct scanline_list **slist)
+bres_triangle(struct point2d *plist, struct scanline_list **slist)
 {
 	struct point2d mp;
 	bool valid_mp;
@@ -104,11 +107,13 @@ test_triangle(struct point2d *plist, struct scanline_list **slist)
 		t = c; a = c; c = b;
 	}
 
+#if 0
 	printf("%s: points: (%d, %d, %d) a=(%d,%d), b=(%d,%d), c=(%d,%d)\n",
 	    __func__, a, b, c,
 	    plist[a].x, plist[a].y,
 	    plist[b].x, plist[b].y,
 	    plist[c].x, plist[c].y);
+#endif
 
 	/* Figure out how big a scanlist to create */
 	*slist = scanline_list_alloc(plist[c].y - plist[a].y);
@@ -116,12 +121,12 @@ test_triangle(struct point2d *plist, struct scanline_list **slist)
 	if (plist[b].y == plist[c].y) {
 		/* Flat bottom triangle */
 		/* plist[a] is the origin point, going to b, c */
-		test_triangle_1(plist[a].x, plist[a].y,
+		bres_triangle_flat(*slist, plist[a].x, plist[a].y,
 		    plist[b].x, plist[c].x, plist[c].y);
 	} else if (plist[a].y == plist[b].y) {
 		/* Flat top triangle */
 		/* plist[c] is the origin point, going to a, b */
-		test_triangle_1(plist[c].x, plist[c].y,
+		bres_triangle_flat(*slist, plist[c].x, plist[c].y,
 		    plist[a].x, plist[b].x, plist[b].y);
 	} else {
 		int dx, dy, by;
@@ -140,17 +145,17 @@ test_triangle(struct point2d *plist, struct scanline_list **slist)
 		mp.x = plist[a].x + ((by / dy) * dx) / 1024;
 
 		/* Flat bottom - a, b, mp; mp.y == b.y */
-		test_triangle_1(plist[a].x, plist[a].y,
+		bres_triangle_flat(*slist, plist[a].x, plist[a].y,
 		    plist[b].x, mp.x, mp.y);
 
 		/* Flat top - b, mp, c, mp.y == c.y */
-		test_triangle_1(plist[c].x, plist[c].y,
+		bres_triangle_flat(*slist, plist[c].x, plist[c].y,
 		    mp.x, plist[b].x, plist[b].y);
 	}
 }
 
 void
-test_triangle_xy(int x1, int y1, int x2, int y2, int x3, int y3,
+bres_triangle_xy(int x1, int y1, int x2, int y2, int x3, int y3,
     struct scanline_list **slist)
 {
 	struct point2d p[3];
@@ -159,5 +164,5 @@ test_triangle_xy(int x1, int y1, int x2, int y2, int x3, int y3,
 	p[1].x = x2; p[1].y = y2;
 	p[2].x = x3; p[2].y = y3;
 
-	test_triangle(p, slist);
+	bres_triangle(p, slist);
 }
