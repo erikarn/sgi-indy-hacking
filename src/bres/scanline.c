@@ -54,9 +54,9 @@ scanline_list_print(const struct scanline_list *l, const char *pfx)
 
 	for (i = 0; i < l->cur; i++) {
 		printf("%s(%d,%d) -> (%d,%d)\n", pfx,
-		    l->list[l->cur].x1,
-		    l->list[l->cur].y,
-		    l->list[l->cur].x2,
-		    l->list[l->cur].y);
+		    l->list[i].x1,
+		    l->list[i].y,
+		    l->list[i].x2,
+		    l->list[i].y);
 	}
 }

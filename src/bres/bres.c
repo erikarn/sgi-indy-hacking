@@ -5,8 +5,8 @@
 #include <sys/types.h>
 
 #include "point.h"
-#include "bres.h"
 #include "scanline.h"
+#include "bres.h"
 
 /*
  * Experiments rendering a flat top or bottom triangle
