@@ -91,13 +91,12 @@ do_triangle(50, 50, 30, 70, 40, 80, 0x0000ff, 0x00ff00, 0xff0000);
 SDL_UnlockSurface(surface);
 SDL_UpdateWindowSurface(window);
 
-/* XXX why consume all the cpu? sigh */
 while (!quit) {
-    while (SDL_PollEvent(&e)) {
-        if (e.type == SDL_QUIT) quit = true;
-        else if (e.type == SDL_KEYDOWN) keys[e.key.keysym.scancode] = true;
-        else if (e.type == SDL_KEYUP) keys[e.key.keysym.scancode] = false;
-    }
+//    SDL_PollEvent(&e); // If use this, use SDL_Delay() too
+    SDL_WaitEvent(&e);
+    if (e.type == SDL_QUIT) quit = true;
+    else if (e.type == SDL_KEYDOWN) keys[e.key.keysym.scancode] = true;
+    else if (e.type == SDL_KEYUP) keys[e.key.keysym.scancode] = false;
 }
 
 SDL_DestroyWindow(window);
