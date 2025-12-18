@@ -8,8 +8,8 @@
 #include "scanline.h"
 #include "bres.h"
 
-#define WIDTH 640
-#define HEIGHT 480
+#define WIDTH 800
+#define HEIGHT 600
 
 SDL_Window* window;
 SDL_Surface* surface;
@@ -55,11 +55,35 @@ do_triangle(int x1, int y1, int x2, int y2, int x3, int y3,
 		span(sl->list[i].x1, sl->list[i].x2, sl->list[i].y, lc, rc, mc);
 	}
 
+//	scanline_list_print(sl, "triangle: ");
+
+	scanline_list_free(sl);
+
+}
+
+void
+do_flat_triangle(int x1, int y1, int x2l, int x2r, int y2,
+    uint32_t lc, uint32_t rc, uint32_t mc)
+{
+	struct scanline_list *sl = NULL;
+	int i;
+
+	sl = scanline_list_alloc(1000);
+	if (sl == NULL)
+		return;
+
+	bres_triangle_flat(sl, x1, y1, x2l, x2r, y2);
+
+	for (i = 0; i < sl->cur; i++) {
+		span(sl->list[i].x1, sl->list[i].x2, sl->list[i].y, lc, rc, mc);
+	}
+
 	scanline_list_print(sl, "triangle: ");
 
 	scanline_list_free(sl);
 
 }
+
 
 int
 main(int argc, const char *argv[])
@@ -84,9 +108,16 @@ SDL_UpdateWindowSurface(window);
 SDL_LockSurface(surface);
 
 //do_triangle(50, 50, 100, 100, 30, 120, 0x0000ff, 0x00ff00, 0xff0000);
-do_triangle(50, 50, 30, 70, 40, 80, 0x0000ff, 0x00ff00, 0xff0000);
-// test_triangle_xy(50, 50, 30, 70, 40, 80);
+do_triangle(250, 50, 150, 300, 400, 550, 0x0000ff, 0x00ff00, 0xff0000);
+//test_triangle_xy(50, 50, 30, 70, 40, 80);
 
+// Flat triangle tests
+
+// Flat bottom
+//do_flat_triangle(200, 100, 100, 300, 400, 0x0000ff, 0x00ff00, 0xff0000);
+
+// Flat top
+//do_flat_triangle(400, 400, 300, 600, 200, 0x0000ff, 0x00ff00, 0xff0000);
 
 SDL_UnlockSurface(surface);
 SDL_UpdateWindowSurface(window);
