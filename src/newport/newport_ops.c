@@ -361,6 +361,43 @@ newport_fill_rectangle(struct gfx_ctx *dc, int x1, int y1, int wi,
 	dc->log_regio = false;
 }
 
+void
+newport_draw_line_setup(struct gfx_ctx *dc)
+{
+	uint32_t drawmode1;
+
+	rex3_wait_gfifo_idle(dc, 0);
+
+	drawmode1 = newport_calc_drawmode1(dc);
+	rex3_write(dc, REX3_REG_DRAWMODE1,
+	    drawmode1 |
+	    REX3_DRAWMODE1_PLANES_RGB |
+	    REX3_DRAWMODE1_COMPARE_LT |
+	    REX3_DRAWMODE1_COMPARE_EQ |
+	    REX3_DRAWMODE1_COMPARE_GT |
+	    REX3_DRAWMODE1_LO_SRC);
+
+	rex3_write(dc, REX3_REG_CLIPMODE, 0x1e00);
+	rex3_write(dc, REX3_REG_WRMASK, newport_calc_wrmode(dc, 0xffffffff));
+
+	rex3_write(dc, REX3_REG_DRAWMODE0, REX3_DRAWMODE0_OPCODE_DRAW |
+	    REX3_DRAWMODE0_ADRMODE_I_LINE | REX3_DRAWMODE0_DOSETUP |
+	    REX3_DRAWMODE0_STOPONX | REX3_DRAWMODE0_STOPONY);
+}
+
+void
+newport_draw_line(struct gfx_ctx *dc, int x1, int y1, int x2, int y2, uint32_t color)
+{
+
+//	dc->log_regio = true;
+
+	rex3_wait_gfifo(dc, 3);
+	rex3_write(dc, REX3_REG_COLORI, newport_calc_colori_color(dc, color));
+	rex3_write(dc, REX3_REG_XYSTARTI, (x1 << REX3_XYSTARTI_XSHIFT) | y1);
+	rex3_write_go(dc, REX3_REG_XYENDI, (x2 << REX3_XYENDI_XSHIFT) | y2);
+	dc->log_regio = false;
+}
+
 #if 0
 
 static void
