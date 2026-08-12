@@ -19,6 +19,8 @@
 #include "newport_hwops.h"
 #include "newport_ops.h"
 
+#include "tri.h"
+
 static bool
 verify_newport(void)
 {
@@ -106,7 +108,15 @@ newport_close(struct gfx_ctx *ctx)
 }
 
 static void
-benchmark_rectangle(struct gfx_ctx *ctx, int tw, int th, int tcount)
+line_span(void *arg, int x1, int x2, int y, uint32_t c)
+{
+	struct gfx_ctx *ctx = arg;
+
+	newport_draw_line(ctx, x1, y, x2, y, c);
+}
+
+static void
+_benchmark_triangle(struct gfx_ctx *ctx, int tcount)
 {
 	struct timespec ts_start, ts_end;
 	uint64_t ts;
@@ -116,30 +126,19 @@ benchmark_rectangle(struct gfx_ctx *ctx, int tw, int th, int tcount)
 
 	clock_gettime(CLOCK_MONOTONIC, &ts_start);
 
-	/* Do rectangle fill setup - this stalls the graphics pipeline */
-	newport_fill_rectangle_setup(ctx);
-	for (int i = 0; i < tcount; i++) {
-		int x, y, w, h, c;
+	newport_draw_line_setup(ctx);
 
-		x = random() % 1280;
-		y = random() % 1024;
-		w = tw;
-		h = th;
-		c = random() % 0xffffff;
+	benchmark_triangle(line_span, ctx, tcount);
 
-		/* This doesn't stall the graphics pipeline */
-		newport_fill_rectangle(ctx, x, y, w, h, c);
-	}
 	clock_gettime(CLOCK_MONOTONIC, &ts_end);
 	ts = (ts_end.tv_sec * 1000000) + (ts_end.tv_nsec / 1000);
 	ts = ts - ((ts_start.tv_sec * 1000000) + (ts_start.tv_nsec / 1000));
 	fills_per_sec = (float) (((float) tcount * 1000.0) /
 	    ((float) ts / 1000.0));
-	pixels_per_sec = fills_per_sec * (float) th * (float) tw;
+	pixels_per_sec = 0;
 
-	printf("newport: %dx%d: %d fills in %llu milliseconds, "
+	printf("newport: %d fills in %llu milliseconds, "
 	    "%.3f fills/sec, %.3f pixels/sec\n",
-	    tw, th,
 	    tcount,
 	    ts / 1000,
 	    fills_per_sec,
@@ -186,11 +185,7 @@ main(int argc, const char *argv[])
 	if (strcmp(mode, "benchmark") == 0) {
 		newport_fill_rectangle_fast(&ctx, 0, 0, 1280, 1024, 0);
 
-		benchmark_rectangle(&ctx, 8, 8, arg2);
-		benchmark_rectangle(&ctx, 16, 16, arg2);
-		benchmark_rectangle(&ctx, 32, 32, arg2);
-		benchmark_rectangle(&ctx, 64, 64, arg2);
-		benchmark_rectangle(&ctx, 128, 128, arg2);
+		_benchmark_triangle(&ctx, arg2);
 	} else {
 		printf("newport: unknown mode '%s'\n", __func__);
 	}
