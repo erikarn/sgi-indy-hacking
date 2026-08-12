@@ -4,9 +4,9 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "point.h"
-#include "scanline.h"
-#include "bres.h"
+#include "libbres/point.h"
+#include "libbres/scanline.h"
+#include "libbres/bres.h"
 
 #define WIDTH 800
 #define HEIGHT 600
