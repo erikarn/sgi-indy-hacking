@@ -67,7 +67,7 @@ bres_triangle_flat(struct scanline_list *slist, int x1, int y1, int x2l,
 	/* TODO: is yc >= 0 correct? or yc > 0, and we need to add the final line/point? */
 	for (yi = y1; yc >= 0; yc--, yi += y_sign) {
 #ifdef DEBUG_TRIANGLE
-		printf("%s:  e_left=%d, e_right=%d\n", __func__, E_left, E_right);
+		printf("%s: yi=%d, yc=%d\n", __func__, yi, yc);
 #endif
 		/* left hand iterator */
 		while (E_left >= 0) {
@@ -83,6 +83,12 @@ bres_triangle_flat(struct scanline_list *slist, int x1, int y1, int x2l,
 #ifdef DEBUG_TRIANGLE
 #endif
 
+		/* Ensure x1 <= x2 for valid span */
+		if (X_left > X_right) {
+			int tmp = X_left;
+			X_left = X_right;
+			X_right = tmp;
+		}
 		scanline_list_push(slist, X_left, X_right, yi);
 
 		E_left -= 2 * -xl_sign * (x2l - x1);
@@ -112,10 +118,13 @@ bres_triangle(struct point2d *plist, struct scanline_list **slist)
 	 * midpoint that may become two triangles.
 	 */
 	if (plist[a].y > plist[b].y) {
-		t = b; a = b; b = a;
+		t = a; a = b; b = t;
 	}
 	if (plist[b].y > plist[c].y) {
-		t = c; a = c; c = b;
+		t = b; b = c; c = t;
+	}
+	if (plist[a].y > plist[b].y) {
+		t = a; a = b; b = t;
 	}
 
 #ifdef PRINT_TRIANGLE_SETUP
@@ -127,7 +136,7 @@ bres_triangle(struct point2d *plist, struct scanline_list **slist)
 #endif
 
 	/* Figure out how big a scanlist to create */
-	*slist = scanline_list_alloc(plist[c].y - plist[a].y);
+	*slist = scanline_list_alloc(plist[c].y - plist[a].y + 1);
 
 	if (plist[b].y == plist[c].y) {
 		/* Flat bottom triangle */
@@ -160,7 +169,7 @@ bres_triangle(struct point2d *plist, struct scanline_list **slist)
 		dy = (plist[c].y - plist[a].y);
 		dx = (plist[c].x - plist[a].x);
 		by = (plist[b].y - plist[a].y) * 1024;
-		xinc = (((by / dy) * dx)) / 1024;
+		xinc = ((by * dx) / dy) / 1024;
 		mp.x = plist[a].x + xinc;
 
 
@@ -177,9 +186,9 @@ bres_triangle(struct point2d *plist, struct scanline_list **slist)
 #endif
 
 #ifdef DRAW_TRIANGLE
-		/* Flat top - b, mp, c, mp.y == c.y */
+		/* Flat top - b, mp, c; render from c.y down to b.y+1 */
 		bres_triangle_flat(*slist, plist[c].x, plist[c].y,
-		    plist[b].x, mp.x, plist[b].y);
+		    plist[b].x, mp.x, plist[b].y + 1);
 #endif
 	}
 }
