@@ -31,6 +31,19 @@ rex3_write(struct gfx_ctx *ctx, uint32_t rexreg, uint32_t val)
 	*reg = val;
 }
 
+void
+rex3_write64(struct gfx_ctx *ctx, uint32_t rexreg, uint64_t val)
+{
+	volatile uint64_t *reg;
+
+	if (ctx->log_regio)
+		printf("%s: 0x%04x <- 0x%08jx\n", __func__, rexreg, val);
+
+	reg = (volatile uint64_t *)(((char *) ctx->addr) + rexreg);
+	*reg = val;
+}
+
+
 uint32_t
 rex3_read(struct gfx_ctx *ctx, uint32_t rexreg)
 {
@@ -48,4 +61,10 @@ void
 rex3_write_go(struct gfx_ctx *ctx, uint32_t rexreg, uint32_t val)
 {
 	rex3_write(ctx, rexreg + REX3_REG_GO, val);
+}
+
+void
+rex3_write64_go(struct gfx_ctx *ctx, uint32_t rexreg, uint64_t val)
+{
+	rex3_write64(ctx, rexreg + REX3_REG_GO, val);
 }

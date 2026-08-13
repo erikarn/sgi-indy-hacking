@@ -108,11 +108,19 @@ newport_close(struct gfx_ctx *ctx)
 }
 
 static void
-line_span(void *arg, int x1, int x2, int y, uint32_t c)
+span_start(void *arg, uint32_t c)
 {
 	struct gfx_ctx *ctx = arg;
 
-	newport_draw_line(ctx, x1, y, x2, y, c);
+	newport_draw_span_setup(ctx, c);
+}
+
+static void
+span_line(void *arg, int x1, int x2, int y, uint32_t c)
+{
+	struct gfx_ctx *ctx = arg;
+
+	newport_draw_span(ctx, x1, x2, y);
 }
 
 static void
@@ -126,9 +134,7 @@ _benchmark_triangle(struct gfx_ctx *ctx, int tcount)
 
 	clock_gettime(CLOCK_MONOTONIC, &ts_start);
 
-	newport_draw_line_setup(ctx);
-
-	benchmark_triangle(NULL, line_span, ctx, tcount);
+	benchmark_triangle(span_start, span_line, ctx, tcount);
 
 	clock_gettime(CLOCK_MONOTONIC, &ts_end);
 	ts = (ts_end.tv_sec * 1000000) + (ts_end.tv_nsec / 1000);

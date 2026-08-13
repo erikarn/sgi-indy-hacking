@@ -398,6 +398,55 @@ newport_draw_line(struct gfx_ctx *dc, int x1, int y1, int x2, int y2, uint32_t c
 	dc->log_regio = false;
 }
 
+void
+newport_draw_span_setup(struct gfx_ctx *dc, uint32_t color)
+{
+	uint32_t drawmode1;
+
+	// TODO: do I need to stall the graphics pipeline here?
+	// Will the write to drawmode1 do it for us?
+	rex3_wait_gfifo_idle(dc, 0);
+
+	drawmode1 = newport_calc_drawmode1(dc);
+	rex3_write(dc, REX3_REG_DRAWMODE1,
+	    drawmode1 |
+	    REX3_DRAWMODE1_PLANES_RGB |
+	    REX3_DRAWMODE1_COMPARE_LT |
+	    REX3_DRAWMODE1_COMPARE_EQ |
+	    REX3_DRAWMODE1_COMPARE_GT |
+	    REX3_DRAWMODE1_LO_SRC);
+
+	rex3_write(dc, REX3_REG_CLIPMODE, 0x1e00);
+	rex3_write(dc, REX3_REG_WRMASK, newport_calc_wrmode(dc, 0xffffffff));
+
+	/*
+	 * This doesn't stall the pipeline; but we're not needing
+	 * to change the state for each rectangle. Eg, if we were
+	 * using the colour iterators, we would likely need to
+	 * set DOSETUP to clear the iterator state between each fill.
+	 */
+	rex3_write(dc, REX3_REG_DRAWMODE0, REX3_DRAWMODE0_OPCODE_DRAW |
+	    REX3_DRAWMODE0_ADRMODE_SPAN | REX3_DRAWMODE0_DOSETUP |
+	    REX3_DRAWMODE0_STOPONX);
+	rex3_write(dc, REX3_REG_COLORI, newport_calc_colori_color(dc, color));
+}
+
+void
+newport_draw_span(struct gfx_ctx *dc, int x1, int x2, int y)
+{
+
+//	dc->log_regio = true;
+
+	rex3_wait_gfifo(dc, 3);
+	rex3_write(dc, REX3_REG_XYSTARTI, 
+	     (x1 << REX3_XYSTARTI_XSHIFT) | y);
+	rex3_write_go(dc, REX3_REG_XYENDI, 
+	     (x2 << REX3_XYENDI_XSHIFT) | y);
+
+	dc->log_regio = false;
+}
+
+
 #if 0
 
 static void

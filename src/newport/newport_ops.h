@@ -21,6 +21,9 @@ extern	void newport_fill_rectangle(struct gfx_ctx *dc, int x1, int y1,
 extern	void newport_draw_line_setup(struct gfx_ctx *dc);
 extern	void newport_draw_line(struct gfx_ctx *dc, int x1, int x2, int y1, int y2, uint32_t colour);
 
+extern	void newport_draw_span_setup(struct gfx_ctx *dc, uint32_t color);
+extern	void newport_draw_span(struct gfx_ctx *dc, int x1, int x2, int y);
+
 extern	bool newport_setup_hw(struct gfx_ctx *dc);
 
 #endif	/* __NEWPORT_OPTS_H__ */
