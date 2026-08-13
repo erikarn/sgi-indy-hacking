@@ -439,10 +439,19 @@ newport_draw_span(struct gfx_ctx *dc, int x1, int x2, int y)
 
 	rex3_wait_gfifo(dc, 2);
 
+#if 1
 	rex3_write(dc, REX3_REG_XYSTARTI, 
 	     (x1 << REX3_XYSTARTI_XSHIFT) | y);
 	rex3_write_go(dc, REX3_REG_XYENDI, 
 	     (x2 << REX3_XYENDI_XSHIFT) | y);
+#else
+	uint64_t val;
+
+	val = (uint64_t)((x1 << REX3_XYSTARTI_XSHIFT) | y) << 32;
+	val |= ((x2 << REX3_XYENDI_XSHIFT) | y);
+
+	rex3_write64_go(dc, REX3_REG_XYSTARTI, val);
+#endif
 
 	dc->log_regio = false;
 }
