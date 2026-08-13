@@ -6,6 +6,11 @@ extern	void rex3_write(struct gfx_ctx *ctx, uint32_t rexreg, uint32_t val);
 extern	void rex3_write_go(struct gfx_ctx *ctx, uint32_t rexreg, uint32_t val);
 
 extern	void rex3_write64(struct gfx_ctx *ctx, uint32_t rexreg, uint64_t val);
+
+/*
+ * TODO: can i actually /do/ an atomic 64 bit write in
+ * 32 bit mode so it properly triggers things?
+ */
 extern	void rex3_write64_go(struct gfx_ctx *ctx, uint32_t rexreg, uint64_t val);
 
 #endif	/* __NEWPORT_REGIO_H__ */
