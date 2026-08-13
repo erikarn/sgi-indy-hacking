@@ -437,7 +437,8 @@ newport_draw_span(struct gfx_ctx *dc, int x1, int x2, int y)
 
 //	dc->log_regio = true;
 
-	rex3_wait_gfifo(dc, 3);
+	rex3_wait_gfifo(dc, 2);
+
 	rex3_write(dc, REX3_REG_XYSTARTI, 
 	     (x1 << REX3_XYSTARTI_XSHIFT) | y);
 	rex3_write_go(dc, REX3_REG_XYENDI, 
