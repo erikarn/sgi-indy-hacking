@@ -3,8 +3,8 @@
 #include <stdbool.h>
 #include <string.h>
 #include <math.h>
-#include "libbres/point.h"
-#include "libbres/scanline.h"
+#include "libpoint/point.h"
+#include "libscanline/scanline.h"
 #include "libbres/bres.h"
 #include "libftri/ftri.h"
 #include "libbres_sub/bres_sub.h"

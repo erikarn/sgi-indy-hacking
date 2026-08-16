@@ -4,8 +4,8 @@
 #include <string.h>
 #include <sys/types.h>
 
-#include "libbres/point.h"
-#include "libbres/scanline.h"
+#include "libpoint/point.h"
+#include "libscanline/scanline.h"
 #include "libbres/bres.h"
 
 static int tests_run = 0;
