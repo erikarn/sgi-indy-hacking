@@ -46,8 +46,13 @@ bres_triangle_flat(struct scanline_list *slist, int x1, int y1, int x2l,
 	int yi;
 	const int y_sign = (y2 < y1) ? -1 : 1;
 	int yc = (y2 - y1) * y_sign;
-	int E_left = -((y2 - y1) * y_sign) - (x2l - x1);
-	int E_right = -((y2 - y1) * y_sign) - (x2r - x1);
+	int dy = abs(y2 - y1);
+	int dx_left = abs(x2l - x1);
+	int dx_right = abs(x2r - x1);
+	
+	/* Standard Bresenham error initialization for Y-major lines */
+	int E_left = 2 * dx_left - dy;
+	int E_right = 2 * dx_right - dy;
 
 #ifdef DEBUG_TRIANGLE
 	printf("%s:  (%d,%d) -> (%d,%d), (%d,%d) \n",
@@ -70,15 +75,19 @@ bres_triangle_flat(struct scanline_list *slist, int x1, int y1, int x2l,
 		printf("%s: yi=%d, yc=%d\n", __func__, yi, yc);
 #endif
 		/* left hand iterator */
-		while (E_left >= 0) {
+		if (E_left > 0) {
 			X_left += xl_sign;
-			E_left -= 2* ((y2 - y1) * y_sign);
+			E_left += 2 * (dx_left - dy);
+		} else {
+			E_left += 2 * dx_left;
 		}
 
 		/* right hand iterator */
-		while (E_right >= 0) {
+		if (E_right > 0) {
 			X_right += xr_sign;
-			E_right -= 2* ((y2 - y1) * y_sign);
+			E_right += 2 * (dx_right - dy);
+		} else {
+			E_right += 2 * dx_right;
 		}
 #ifdef DEBUG_TRIANGLE
 #endif
@@ -90,9 +99,6 @@ bres_triangle_flat(struct scanline_list *slist, int x1, int y1, int x2l,
 			X_right = tmp;
 		}
 		scanline_list_push(slist, X_left, X_right, yi);
-
-		E_left -= 2 * -xl_sign * (x2l - x1);
-		E_right -= 2 * -xr_sign * (x2r - x1);
 	}
 #ifdef DEBUG_TRIANGLE
 	printf("%s: done\n", __func__);
