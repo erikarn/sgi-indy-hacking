@@ -4,8 +4,8 @@
 #include <stdbool.h>
 #include <sys/types.h>
 
-#include "point.h"
-#include "scanline.h"
+#include "libpoint/point.h"
+#include "libscanline/scanline.h"
 #include "bres.h"
 
 //#define DEBUG_TRIANGLE

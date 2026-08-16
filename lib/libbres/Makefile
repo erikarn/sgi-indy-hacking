@@ -1,7 +1,9 @@
 include ../../Makefile.inc
 
-SRCS = bres.c scanline.c
-OBJS = bres.o scanline.o
+SRCS = bres.c
+OBJS = bres.o
+
+CFLAGS += -I../
 
 LIB_STATIC = libbres.a
 LIB_SHARED = libbres.so
@@ -15,10 +17,7 @@ $(LIB_STATIC): $(OBJS)
 $(LIB_SHARED): $(OBJS)
 	$(CC) -shared -o $@ $^
 
-bres.o: bres.c bres.h point.h scanline.h
-	$(CC) $(CFLAGS) -c -o $@ $<
-
-scanline.o: scanline.c scanline.h point.h
+bres.o: bres.c bres.h ../libpoint/point.h ../libscanline/scanline.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 clean:

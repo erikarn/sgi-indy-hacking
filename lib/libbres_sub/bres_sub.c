@@ -3,7 +3,7 @@
 #include <stdbool.h>
 #include <sys/types.h>
 
-#include "libbres/scanline.h"
+#include "libscanline/scanline.h"
 #include "bres_sub.h"
 
 /*

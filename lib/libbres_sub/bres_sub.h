@@ -9,7 +9,7 @@
 #define SUBPIXEL_SCALE (1 << SUBPIXEL_BITS)
 #define SUBPIXEL_MASK (SUBPIXEL_SCALE - 1)
 
-#include "libbres/point.h"
+#include "libpoint/point.h"
 
 struct scanline_list;
 

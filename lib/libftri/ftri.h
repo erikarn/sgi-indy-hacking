@@ -1,7 +1,7 @@
 #ifndef	__FTRI_H__
 #define	__FTRI_H__
 
-#include "libbres/point.h"
+#include "libpoint/point.h"
 
 struct scanline_list;
 
