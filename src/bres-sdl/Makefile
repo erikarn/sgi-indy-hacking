@@ -2,10 +2,11 @@ include ../../Makefile.inc
 
 TARGETS = sdl triangles
 
-LIBDIR = ../../lib/libbres
+LIBDIR = ../../lib/
+BRESDIR = ../../lib/libbres
 FTRIDIR = ../../lib/libftri
 LDFLAGS += -L/usr/local/lib -L$(FTRIDIR)
-LDLIBS = $(LIBDIR)/libbres.a $(FTRIDIR)/libftri.a -lSDL2
+LDLIBS = $(BRESDIR)/libbres.a $(FTRIDIR)/libftri.a  $(LIBDIR)/libscanline/libscanline.a -lSDL2
 
 CFLAGS += -I../../lib -I/usr/local/include
 
