@@ -1,6 +1,12 @@
 include ../../Makefile.inc
 
-TARGETS = test test_sorting
+TARGETS = test test_sorting test_compare
+
+test_compare: test_compare.o
+	$(CC) $(LDFLAGS) -o $@ $^ $(LIBDIR)/libbres.a ../../lib/libftri/libftri.a ../../lib/libbres_sub/libbres_sub.a -lm
+
+test_compare.o: test_compare.c
+	$(CC) $(CFLAGS) -I../../lib/libbres_sub -c -o $@ $<
 
 LIBDIR = ../../lib/libbres
 LDFLAGS += -L$(LIBDIR)
